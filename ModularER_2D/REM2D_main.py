@@ -302,7 +302,7 @@ class run2D():
 			if self.SAVEDATA:
 				if (i % self.CHECKPOINT_FREQUENCY == 0 or i == N_GENERATIONS):
 					#self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
-					da.save_fitness_data(self.SAVE_FILE_DIRECTORY, self.fitnessData)
+					self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
 					pickle.dump(population,open(self.SAVE_FILE_DIRECTORY + self.POPULATION_FILE + str(i), "wb"))
 
 			if self.PLOT_FITNESS:
@@ -406,7 +406,7 @@ def setup():
 	general_config = os.path.join(directory , '_g.cfg')
 	print('reading: ', general_config)
 	if not os.path.isfile(general_config):
-		sys.exit("No common configuration specified")
+		print("No common configuration specified")
 	config.read(general_config)
 
 	print("working from ", directory)
