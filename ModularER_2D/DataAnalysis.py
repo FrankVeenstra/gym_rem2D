@@ -388,13 +388,13 @@ class FitnessData:
 	# Note: just to use to plot fitness over time while the program is running, 
 	# all other data of the runs will be stored anyway. 
 	def __init__(self):
-		self.p_0 = []
-		self.p_25 = []
-		self.p_50 = []
-		self.p_75 = []
-		self.p_100 = []
-		self.avg = []
-		self.divValues =[]
+		self.p_0 = [] # 0th percentile
+		self.p_25 = [] # 25th percentile
+		self.p_50 = [] # 50th percentile
+		self.p_75 = [] # 75th percentile
+		self.p_100 = [] # 100th percentile
+		self.avg = [] # average
+		self.divValues =[] # diversity values
 	def save(self, saveFile, num = ''):
 		pickle.dump(self,open(saveFile + str(num),"wb"))
 	def addFitnessData(self,fitnesses, gen):
