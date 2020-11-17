@@ -1,3 +1,5 @@
+""" This script is used to visualize RGB outputs from neural networks """
+
 import NeuralNetwork.NEAT_NN as NE
 import Cellular_Encoding as CE
 import matplotlib.pyplot as plt
@@ -5,6 +7,7 @@ import pygame
 
 im = {}
 from pygame import gfxdraw
+
 
 def plotMAT(ax, array):
 	#plt.hist2d(array)

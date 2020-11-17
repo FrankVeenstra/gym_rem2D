@@ -8,8 +8,10 @@ import math
 import os
 import configparser
 import scipy.stats as st
+import copy
 
-def load_datas(paths = None):
+""" for loading data from multiple paths path. Note that it's quite incromprihensible """
+def load_datas(paths = None, loadFromExperimentSubfolder = False):
 	if paths is None:
 		paths = ['C:/result_temp_final','D:/results/cppn_final/','D:/results/ce_final/' ]
 	for directory in paths:
@@ -32,24 +34,27 @@ def load_datas(paths = None):
 		except:
 			print("Could not find file: " , count, " in path " , directory)
 
-		file_name = directory + 'result_' +str(count)+'/s_'
-		try:
-			f = open(file_name)
-			f.close()
-		except:
-			file_name = directory +str(count)+'/s_'
-		
+		file_name = directory + 's_'
+		if (loadFromExperimentSubfolder is True):
+			try:
+				f = open(file_name)
+				f.close()
+			except:
+				file_name = directory +str(count)+'/s_'
+		else:
+			file_name = directory + 's_'
 		try:
 			with open(file_name) as f:
 				fit_data = pickle.load(open(file_name,"rb"))
 				# add associated configuration file
 				fit_data.config = config
 				fitness_datas.append(fit_data)
+				print("found file ", count)
 			count+=1
-			#print(count)
-			#plotter.plotFitnessProgress(fitness_datas[0])
+				#print(count)
+				#plotter.plotFitnessProgress(fitness_datas[0])
 		except:
-			print("---")
+			print("Could not unpickle the fitness data of experiment ", count)
 			count+=1
 			if (count >30 and count < 60):
 				continue
@@ -63,6 +68,34 @@ def load_datas(paths = None):
 		#if count > 256:
 		#	file_present = False
 	return fitness_datas
+
+""" for loading data from a single path """
+def load_data(path, filename) :
+	if path is None:
+		raise Exception("No path specified for 'load_data' ")
+		print("No path specified for 'load_data'")
+	if not os.path.exists(path):
+		raise Exception("Cannot find directory: ", path)
+
+	file_name = path + filename
+	try:
+		f = open(file_name)
+		f.close()
+	except:
+		raise Exception("Cannot find file : ", file_name)
+	try:
+		with open(file_name) as f:
+			fit_data = pickle.load(open(file_name,"rb"))
+			# add associated configuration file
+			print("loaded fitness data")
+			return fit_data
+	except:
+		raise Exception("Could not unpickle the fitness data of experiment : ", file_name)
+
+def save_fitness_data(SAVE_FILE_DIRECTORY, fitnessData):
+	fd = copy.deepcopy(fitnessData);
+	fd.save(SAVE_FILE_DIRECTORY)
+
 
 
 def confidence_ellipse(x, y, ax, n_std=3.0, facecolor='none', **kwargs):
@@ -349,7 +382,11 @@ class Plotter:
 	def setDivValue(self,individual):
 		return
 
+
 class FitnessData:
+	# A helper class that simply stores some values that can easily be plotted
+	# Note: just to use to plot fitness over time while the program is running, 
+	# all other data of the runs will be stored anyway. 
 	def __init__(self):
 		self.p_0 = []
 		self.p_25 = []
@@ -767,10 +804,29 @@ def plot_fitness_datas_together(fitness_datas,sort = None,plot_individual_lines=
 	#plt.tight_layout()
 	return
 
+def plot_basic_fitness(fitness_data):
+	cmap = cm.viridis
+	fig = plt.figure()
+	ax = fig.add_subplot(1,1,1)
+	x = range(0,len(fitness_data.avg))
+	ax.plot(fitness_data.avg,color = 'black')
+	ax.fill_between(x,fitness_data.p_0,fitness_data.p_100, color = 'black', alpha = 0.01)
+	ax.fill_between(x,fitness_data.p_25,fitness_data.p_75, color = 'black', alpha = 0.2)
+	ax.set_xlabel("Generations")
+	ax.set_ylabel("Fitness")
 
-def plot_comparison_fitness():
+
+def plot_fitness(path, filename):
+	fitness_data = load_data(path,filename)
+	plot_basic_fitness(fitness_data)
+
+def plot_comparison_fitness(path = None):
 	#paths = ['C:/result_temp_final/','D:/results/cppn_final/','D:/results/ce_final/']
-	paths = ['C:/result_temp_final/']
+	paths = []
+	if path is None:
+		paths.append('C:/result_temp_final/')
+	else:
+		paths.append(path)
 	fitness_datas = load_datas(paths)
 	plot_fitness_datas_together(fitness_datas,sort=None,plot_individual_lines=True)
 	plt.show()
@@ -860,9 +916,18 @@ def plot_sweep():
 	plt.show()
 	#fitness_datas,sort = None, together = False
 
-if __name__ == "__main__":
+if __name__ == "__main__":	
+	# add a path where you saved your files, make sure to end with '/'
+	path = "e.g. D:/your_file_folder/"
+	# add the filename of your data (the name of the pickled FitnessData object)
+	filename="s_"
+	# simple function to plot the progression of a single evolutionary run
+	plot_fitness(path,filename);	
+	plt.show()
+
+	# the following lines of code are quick hacks that were used for last-minute plotting, they might be a bit lacking in user-friendliness
 	#plt.rcParams.update({'font.size': 16})
-	plot_sweep()
+	#plot_sweep()
 	#plot_sweep_diversity()
 	#plot_comparison_fitness()
 	#diversity_plot()

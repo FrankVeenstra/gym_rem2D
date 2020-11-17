@@ -49,7 +49,7 @@ from termcolor import colored, cprint
 
 # custom data analysis scripts
 # removed, contained hacky scripts. 
-from DataAnalysis import DataAnalysis as da
+import DataAnalysis as da
 
 # singleton equivalent
 env = None
@@ -131,27 +131,7 @@ class Individual:
 		# should add crossover mutations, have to be done uniquely for each encoding though
 		# TODO: self.genome.crossover(CROSSOVER_RATE, other_genome);
 
-class FitnessData:
-	# A helper class that simply stores some values that can easily be plotted
-	# Note: just to use to plot fitness over time while the program is running, 
-	# all other data of the runs will be stored anyway. 
-	def __init__(self):
-		self.p_0 = []
-		self.p_25 = []
-		self.p_50 = []
-		self.p_75 = []
-		self.p_100 = []
-		self.avg = []
-		self.divValues =[]
-	def save(self, saveFile, num = ''):
-		pickle.dump(self,open(saveFile + str(num),"wb"))
-	def addFitnessData(self,fitnesses, gen):
-		self.avg.append(np.average(fitnesses))
-		self.p_0.append(np.percentile(fitnesses,0))
-		self.p_25.append(np.percentile(fitnesses,25))
-		self.p_50.append(np.percentile(fitnesses,50))
-		self.p_75.append(np.percentile(fitnesses,75))
-		self.p_100.append(np.percentile(fitnesses,100))
+
 
 class run2D():
 	"""
@@ -163,7 +143,7 @@ class run2D():
 		self.start_time = datetime.datetime.now()
 		self.time = datetime.datetime.now()
 		self.initialize_parameters_from_config_file(dir,config)
-		self.fitnessData = FitnessData() # stores data of the progression
+		self.fitnessData = da.FitnessData() # stores data of the progression
 
 		# TODO take from configuration file
 		self.EVALUATION_STEPS = 10000
@@ -321,7 +301,8 @@ class run2D():
 			self.fitnessData.addFitnessData(fitness_values,gen)
 			if self.SAVEDATA:
 				if (i % self.CHECKPOINT_FREQUENCY == 0 or i == N_GENERATIONS):
-					self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
+					#self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
+					da.save_fitness_data(self.SAVE_FILE_DIRECTORY, self.fitnessData)
 					pickle.dump(population,open(self.SAVE_FILE_DIRECTORY + self.POPULATION_FILE + str(i), "wb"))
 
 			if self.PLOT_FITNESS:
