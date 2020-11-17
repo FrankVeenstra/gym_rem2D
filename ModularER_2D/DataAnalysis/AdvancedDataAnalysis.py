@@ -11,6 +11,138 @@ import configparser
 import scipy.stats as st
 from matplotlib.patches import Ellipse
 
+# for plotting while evolution is progressing
+class Plotter:
+	def __init__(self):
+		self.fig = plt.figure()
+		self.ax = self.fig.add_subplot(2,2,1)
+		self.ax2 = self.fig.add_subplot(2,2,2)
+		self.ax3 = self.fig.add_subplot(2,2,3)
+		self.ax4 = self.fig.add_subplot(2,2,4)
+		self.cmap = plt.get_cmap('viridis')
+	def plotFitnessProgress(self,fitnessData,ax=None):
+		if ax == None: 
+			ax = self.ax2
+		ax.clear()
+		ax.plot(fitnessData.avg, color = 'black')
+		xs =[]
+		for v in range(len(fitnessData.p_0)):
+			xs.append(v)
+		ax.fill_between(xs,fitnessData.p_0,fitnessData.p_100, color = 'black', alpha = 0.1)
+		ax.fill_between(xs,fitnessData.p_25,fitnessData.p_75, color = 'black', alpha = 0.3)
+		plt.pause(0.001)
+		plt.ion()
+
+	def displayDivs(self,fitnessData,ax=None,ax2=None):
+		if ax == None:
+			ax=self.ax3
+		if ax2 == None:
+			ax2=self.ax4
+		ax.clear()
+		ax2.clear()
+		prevys = []
+		prevxs = []
+		interval = 1
+		for i,vals in enumerate(fitnessData.divValues):
+
+			xs = []
+			ys = []
+
+			color = self.cmap(1-(i/len(fitnessData.divValues)))
+			for pv in vals:
+				ys.append(pv)
+
+			if i % interval == 0:
+				if len(prevys) > 0:
+					xs = []
+					xs.append(i-interval)
+					xs.append(i)
+					c_yavg = []
+					c_ymax = []
+					c_ymin = []
+					c_y75 = []
+					c_y25 = []
+					c_yavg.append(np.average(prevys))
+					c_yavg.append(np.average(ys))
+					c_ymax.append(np.max(prevys))
+					c_ymax.append(np.max(ys))
+					c_ymin.append(np.min(prevys))
+					c_ymin.append(np.min(ys))
+					c_y75.append(np.percentile(prevys,75))
+					c_y75.append(np.percentile(ys,75))
+					c_y25.append(np.percentile(prevys,25))
+					c_y25.append(+np.percentile(ys,25))
+				
+					ax2.plot(xs,c_yavg, c ='red')
+					ax2.fill_between(xs,c_ymin,c_ymax, alpha = 0.1, color ='red')
+					ax2.fill_between(xs,c_y25,c_y75, alpha = 0.3, color ='red')
+
+				prevxs = xs
+				prevys = ys
+
+	def displayDivsxy(self,fitnessData,ax=None,ax2=None):
+		if ax == None:
+			ax=self.ax3
+		if ax2 == None:
+			ax2=self.ax4
+		ax.clear()
+		ax2.clear()
+		prevxs = []
+		prevys = []
+		interval = 2
+		for i,vals in enumerate(fitnessData.divValues):
+			xs = []
+			ys = []
+			color = self.cmap(1-(i/len(fitnessData.divValues)))
+
+			for pv in vals:
+				xs.append(pv[0])
+				ys.append(pv[1])
+				ax.scatter(pv[0],pv[1],c = color, alpha = i/len(fitnessData.divValues))
+			confidence_ellipse(np.array(xs),np.array(ys),ax,edgecolor=color,facecolor=color, alpha = 0.25)#i/len(fitnessData.divValues))
+
+			if i % interval == 0:
+				if len(prevxs) > 0:
+					xs = []
+					xs.append(i-interval)
+					xs.append(i)
+					c_yavg = []
+					c_ymax = []
+					c_ymin = []
+					c_y75 = []
+					c_y25 = []
+					c_yavg.append(np.average(prevxs) +np.average(prevys))
+					c_yavg.append(np.average(xs) + np.average(ys))
+					c_ymax.append(np.max(prevxs) +np.max(prevys))
+					c_ymax.append(np.max(xs) + np.max(ys))
+					c_ymin.append(np.min(prevxs) +np.min(prevys))
+					c_ymin.append(np.min(xs) + np.min(ys))
+					c_y75.append(np.percentile(prevxs,75)+np.percentile(prevys,75))
+					c_y75.append(np.percentile(xs,75)+np.percentile(ys,75))
+					c_y25.append(np.percentile(prevxs,25)+np.percentile(prevys,25))
+					c_y25.append(np.percentile(xs,25)+np.percentile(ys,25))
+				
+					ax2.plot(xs,c_yavg, c ='red')
+					ax2.fill_between(xs,c_ymin,c_ymax, alpha = 0.1, color ='red')
+					ax2.fill_between(xs,c_y25,c_y75, alpha = 0.3, color ='red')
+
+				prevxs = xs
+				prevys = ys
+
+	def plotFitness(self,fitnesses, ax,gen):
+		x = []
+		for f in fitnesses:
+			x.append(gen)
+		ax.scatter(x,fitnesses)
+		plt.pause(0.001)
+		plt.ion()
+
+	def setDivValue(self,individual):
+		# Was used to set a diversity score. 
+		return
+
+
+
 class FitnessData:
 	def __init__(self):
 		self.p_0 = []		# 0th percentile
@@ -245,133 +377,6 @@ def tree_edit_distance(population):
 		divValues.append(divValue)
 	return divValues
 	
-class Plotter:
-	def __init__(self):
-		self.fig = plt.figure()
-		self.ax = self.fig.add_subplot(2,2,1)
-		self.ax2 = self.fig.add_subplot(2,2,2)
-		self.ax3 = self.fig.add_subplot(2,2,3)
-		self.ax4 = self.fig.add_subplot(2,2,4)
-		self.cmap = plt.get_cmap('viridis')
-	def plotFitnessProgress(self,fitnessData,ax=None):
-		if ax == None: 
-			ax = self.ax2
-		ax.clear()
-		ax.plot(fitnessData.avg, color = 'black')
-		xs =[]
-		for v in range(len(fitnessData.p_0)):
-			xs.append(v)
-		ax.fill_between(xs,fitnessData.p_0,fitnessData.p_100, color = 'black', alpha = 0.1)
-		ax.fill_between(xs,fitnessData.p_25,fitnessData.p_75, color = 'black', alpha = 0.3)
-		plt.pause(0.001)
-		plt.ion()
-
-	def displayDivs(self,fitnessData,ax=None,ax2=None):
-		if ax == None:
-			ax=self.ax3
-		if ax2 == None:
-			ax2=self.ax4
-		ax.clear()
-		ax2.clear()
-		prevys = []
-		prevxs = []
-		interval = 1
-		for i,vals in enumerate(fitnessData.divValues):
-
-			xs = []
-			ys = []
-
-			color = self.cmap(1-(i/len(fitnessData.divValues)))
-			for pv in vals:
-				ys.append(pv)
-
-			if i % interval == 0:
-				if len(prevys) > 0:
-					xs = []
-					xs.append(i-interval)
-					xs.append(i)
-					c_yavg = []
-					c_ymax = []
-					c_ymin = []
-					c_y75 = []
-					c_y25 = []
-					c_yavg.append(np.average(prevys))
-					c_yavg.append(np.average(ys))
-					c_ymax.append(np.max(prevys))
-					c_ymax.append(np.max(ys))
-					c_ymin.append(np.min(prevys))
-					c_ymin.append(np.min(ys))
-					c_y75.append(np.percentile(prevys,75))
-					c_y75.append(np.percentile(ys,75))
-					c_y25.append(np.percentile(prevys,25))
-					c_y25.append(+np.percentile(ys,25))
-				
-					ax2.plot(xs,c_yavg, c ='red')
-					ax2.fill_between(xs,c_ymin,c_ymax, alpha = 0.1, color ='red')
-					ax2.fill_between(xs,c_y25,c_y75, alpha = 0.3, color ='red')
-
-				prevxs = xs
-				prevys = ys
-
-	def displayDivsxy(self,fitnessData,ax=None,ax2=None):
-		if ax == None:
-			ax=self.ax3
-		if ax2 == None:
-			ax2=self.ax4
-		ax.clear()
-		ax2.clear()
-		prevxs = []
-		prevys = []
-		interval = 2
-		for i,vals in enumerate(fitnessData.divValues):
-			xs = []
-			ys = []
-			color = self.cmap(1-(i/len(fitnessData.divValues)))
-
-			for pv in vals:
-				xs.append(pv[0])
-				ys.append(pv[1])
-				ax.scatter(pv[0],pv[1],c = color, alpha = i/len(fitnessData.divValues))
-			confidence_ellipse(np.array(xs),np.array(ys),ax,edgecolor=color,facecolor=color, alpha = 0.25)#i/len(fitnessData.divValues))
-
-			if i % interval == 0:
-				if len(prevxs) > 0:
-					xs = []
-					xs.append(i-interval)
-					xs.append(i)
-					c_yavg = []
-					c_ymax = []
-					c_ymin = []
-					c_y75 = []
-					c_y25 = []
-					c_yavg.append(np.average(prevxs) +np.average(prevys))
-					c_yavg.append(np.average(xs) + np.average(ys))
-					c_ymax.append(np.max(prevxs) +np.max(prevys))
-					c_ymax.append(np.max(xs) + np.max(ys))
-					c_ymin.append(np.min(prevxs) +np.min(prevys))
-					c_ymin.append(np.min(xs) + np.min(ys))
-					c_y75.append(np.percentile(prevxs,75)+np.percentile(prevys,75))
-					c_y75.append(np.percentile(xs,75)+np.percentile(ys,75))
-					c_y25.append(np.percentile(prevxs,25)+np.percentile(prevys,25))
-					c_y25.append(np.percentile(xs,25)+np.percentile(ys,25))
-				
-					ax2.plot(xs,c_yavg, c ='red')
-					ax2.fill_between(xs,c_ymin,c_ymax, alpha = 0.1, color ='red')
-					ax2.fill_between(xs,c_y25,c_y75, alpha = 0.3, color ='red')
-
-				prevxs = xs
-				prevys = ys
-
-	def plotFitness(self,fitnesses, ax,gen):
-		x = []
-		for f in fitnesses:
-			x.append(gen)
-		ax.scatter(x,fitnesses)
-		plt.pause(0.001)
-		plt.ion()
-
-	def setDivValue(self,individual):
-		return
 
 
 """ Used to plot diversity metrics across runs """ 

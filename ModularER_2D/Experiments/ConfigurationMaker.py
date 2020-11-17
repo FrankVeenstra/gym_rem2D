@@ -7,12 +7,14 @@ morphology_mutation_rates = [0.01]
 mutation_sigmas = [0.1]
 encodings = ['lsystem']
 
-def save_config(experiment_nr,mr,mmr,ms,enc,dir):
+def create(experiment_nr = 0,mr = 0.01,mmr = 0.01,ms = 0.1,enc = 'lsystem',dir=''):
 	config = configparser.ConfigParser()
 	config['experiment'] = {}
 	config['experiment']['checkpoint_frequency'] = '10'
 	config['experiment']['save_elite'] = '1'
-	
+	config['experiment']['experiment_number'] = str(experiment_nr)
+	config['experiment']['directory'] = dir
+
 	config['ea'] = {}
 	# total number of evaluations: note that generations is calculated as 'n_evaluations' / 'batch_size'
 	config['ea']['n_evaluations'] = '10000'
@@ -58,9 +60,11 @@ def save_config(experiment_nr,mr,mmr,ms,enc,dir):
 	config['visualization']['v_tree'] = '0'
 	config['visualization']['v_progression'] = '0'
 	config['visualization']['v_debug'] = '0'
-	
+	return config
 
-	with open(dir+str(experiment_nr)+'.cfg', 'w') as configfile:
+def save_config(config):
+	print("Saving config in : ", config['experiment']['directory'])
+	with open(config['experiment']['directory']+str(config['experiment']['experiment_number'])+'.cfg', 'w') as configfile:
 		config.write(configfile)
 
 if __name__ == "__main__":
@@ -74,5 +78,6 @@ if __name__ == "__main__":
 			for mmr in morphology_mutation_rates:
 				for ms in mutation_sigmas:
 					for i in range(n_duplicates):
-						save_config(nr, mr,mmr,ms, enc, directory +'/')
+						config = create(nr, mr,mmr,ms, enc, directory +'/')
+						save_config(config)
 						nr+=1

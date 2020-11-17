@@ -85,5 +85,24 @@ if __name__ == "__main__":
 	plot_fitness(path,filename);	
 	plt.show()
 
+# for plotting while evolution is progressing
+class Plotter:
+	def __init__(self):
+		self.fig = plt.figure()
+		self.ax1 = self.fig.add_subplot(1,1,1)
+		self.cmap = plt.get_cmap('viridis')
+	def plotFitnessProgress(self,fitnessData,ax=None):
+		if ax == None: 
+			ax = self.ax1
+		ax.clear()
+		ax.plot(fitnessData.avg, color = 'black')
+		xs =[]
+		for v in range(len(fitnessData.p_0)):
+			xs.append(v)
+		ax.fill_between(xs,fitnessData.p_0,fitnessData.p_100, color = 'black', alpha = 0.1)
+		ax.fill_between(xs,fitnessData.p_25,fitnessData.p_75, color = 'black', alpha = 0.3)
+		plt.pause(0.001)
+		plt.ion()
+
 
 

@@ -5,15 +5,12 @@ Note that at this stage the code still needs some cleaning. (You will also find 
 
 Please don't hesitate to contact me if you'd like some explanation or have a suggestion. 
 
-
 If you're interested why this project exists, see our paper:
-
 
 Frank Veenstra and Kyrre Glette, 2020, *How Different Encodings Affect Performance and Diversification when Evolving the Morphology and Control of 2D Virtual Creatures*
 ALIFE 2020: The 2020 Conference on Artificial Life, pp. 592–601
 
 You can find the article here: https://www.mitpressjournals.org/doi/abs/10.1162/isal_a_00295 
-
 
 We appreciate any citation if you find this work useful, you can use the following bibtex:
 
@@ -34,5 +31,4 @@ We appreciate any citation if you find this work useful, you can use the followi
         https://www.mitpressjournals.org/doi/pdf/10.1162/isal_a_00295
     }
     }
-
 

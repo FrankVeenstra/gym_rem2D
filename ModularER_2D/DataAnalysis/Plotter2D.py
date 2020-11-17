@@ -1,4 +1,4 @@
-""" This script is used to visualize RGB outputs from neural networks """
+""" This script is used to visualize RGB outputs from neural networks . I know, the name is deceiving. """
 
 import NeuralNetwork.NEAT_NN as NE
 import Cellular_Encoding as CE
