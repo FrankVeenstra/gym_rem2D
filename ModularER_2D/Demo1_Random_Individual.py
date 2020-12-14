@@ -1,7 +1,7 @@
 import REM2D_main as r2d
 import numpy as np
 
-def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, ENV_LENGTH=100, TREE_DEPTH = None, CONTROLLER = None):
+def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=10, ENV_LENGTH=100, TREE_DEPTH = None, CONTROLLER = None):
 	env = r2d.getEnv()
 	if TREE_DEPTH is None:
 		try:
@@ -12,18 +12,16 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 	env.seed(4)
 	env.reset(tree=tree, module_list=individual.genome.moduleList)
 
-	it = 0
 	fitness = 0
 	for i in range(EVALUATION_STEPS):
-		it+=1
-		if it % INTERVAL == 0 or it == 1:
+		if i % INTERVAL == 0:
 			if not HEADLESS:
 				env.render()
 
-		# Note that the evaluation function is not designed to be integrated with the action space of OpenAI gym. 
+		# A list of actions should be returned ideally. 
+		# Right now, the tree contains a contoller which is updated.  
 		# TODO: 
 		action = np.ones_like(env.action_space.sample())	
-
 		observation, reward, done, info  = env.step(action)
 		
 		if reward< -10:

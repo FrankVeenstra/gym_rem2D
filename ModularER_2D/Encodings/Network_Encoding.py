@@ -97,19 +97,14 @@ class NN_enc(enc.Encoding):
 			input.append(float(1)-(float(2)*(float(depth)/float(self.maxTreeDepth)))) # x coordinate is the tree depth normalized to a value between 0 and 1 
 			input.append(float(1)-(float(2)*(float(par_symb.moduleRef+1)/float(len(self.moduleList))))) # module type 
 			input.append(con.value[0]) # -1.0,0.0,1.0
-			#input.append(float(1)-(float(2)*(float(i)/float(len(par_symb.availableConnections))))) #
-			#input.append(float(1)-(float(index)/float(self.maxModules)*2))
 
 			output = []
-			#for j in range(10-len(input)):
-			#	input.append(0)
 			if (self.networkType == NETWORK_TYPE.CPPN):
 				output = self.nn_p.activate(input)
 			elif (self.networkType == NETWORK_TYPE.CE):
 				output = self.nn_p.update(input,requested_number_of_outputs=9)
 			else:
 				raise Exception("Cannot update network, no network type found")
-			# print(np.max(output))
 			# outputs of the network are 0: module, 1: module type, 2,3: module size
 			if output[0] > 0.5:
 				newCon.append(con)
@@ -126,7 +121,6 @@ class NN_enc(enc.Encoding):
 				elif(connectedMNr < 0):
 					#raise("Trying to get a reference a module beyond the moduleList given to the network. Make sure the output value is between 0 and len(moduleList)-1")
 					connectedMNr = 0
-				#print(output[i], connectedMNr)
 				connectedModule = C_Module(index, self.moduleList[connectedMNr],connectedMNr)
 				connectedModule.module.setMorph(output[2],output[3],output[4])
 				#theta = (output[4]*3)-1 

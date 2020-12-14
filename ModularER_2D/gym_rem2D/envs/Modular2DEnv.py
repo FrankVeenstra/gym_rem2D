@@ -17,35 +17,11 @@ import os
 
 ASSET_PATH = os.path.join(os.path.dirname(__file__), "../../assets")
 
-
-# This is simple 4-joints walker robot environment.
+# Adjusted from Oleg Klimov's Bipedal walker environment. Licensed on the same terms as the rest of OpenAI Gym.
 #
-# There are two versions:
-#
-# - Normal, with slightly uneven terrain.
-#
-# - Hardcore with ladders, stumps, pitfalls.
-#
-# Reward is given for moving forward, total 300+ points up to the far end. If the robot falls,
-# it gets -100. Applying motor torque costs a small amount of points, more optimal agent
-# will get better score.
-#
-# Heuristic is provided for testing, it's also useful to get demonstrations to
-# learn from. To run heuristic:
-#
-# python gym/envs/box2d/bipedal_walker.py
-#
-# State consists of hull angle speed, angular velocity, horizontal speed, vertical speed,
-# position of joints and joints angular speed, legs contact with ground, and 10 lidar
-# rangefinder measurements to help to deal with the hardcore version. There's no coordinates
-# in the state vector. Lidar is less useful in normal version, but it works.
-#
-# To solve the game you need to get 300 points in 1600 time steps.
-#
-# To solve hardcore version you need 300 points in 2000 time steps.
-#
-# Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
 # Adjusted by Frank Veenstra and Joergen Jorgensen. Licensed on the same terms as the rest of OpenAI Gym.
+#
+# Note: this file is still filled with hacks
 
 FPS    = 50
 SCALE  = 30.0   # affects how fast-paced the game is, forces should be adjusted as well
@@ -75,7 +51,6 @@ DISPLAY_JOINTS = False
 DISPLAY_VECTORS = False
 WOD_SPEED = 0.04
 
-JET_FORCE = 10.
 VIEWPORT_W = 800
 VIEWPORT_H = 600
 
@@ -90,36 +65,6 @@ COLLISIONALLOWED = True # TODO
 
 VERBOSE = False
 
-HULL_FD = fixtureDef(
-				shape=polygonShape(vertices=[ (x/SCALE,y/SCALE) for x,y in HULL_POLY ]),
-				density=5.0,
-				friction=0.1,
-				categoryBits=0x0020,
-				maskBits=0x001,  # collide only with ground
-				restitution=0.0) # 0.99 bouncy
-
-LEG_FD = fixtureDef(
-					shape=polygonShape(box=(LEG_W/2, LEG_H/2)),
-					density=1.0,
-					restitution=0.0,
-					categoryBits=0x0020,
-					maskBits=0x001)
-
-LOWER_FD = fixtureDef(
-					shape=polygonShape(box=(0.8*LEG_W/2, LEG_H/2)),
-					density=1.0,
-					restitution=0.0,
-					categoryBits=0x0020,
-					maskBits=0x001)
-
-MODULAR_FD = fixtureDef(
-					shape=polygonShape(box=(MODULE_R, MODULE_R)),
-					density=1.0,
-					friction=0.1,
-					restitution=0.0,
-					categoryBits=0x0020,
-					maskBits=0x001
-					)
 
 class ModularRobotBox2D:
 	"""
@@ -166,8 +111,6 @@ class WallOfDeath:
 		self.position += self.speed
 		#self.speed = self.speed + 0.00001
 		
-
-
 
 class ContactDetector(contactListener):
 	def __init__(self, env):
@@ -897,15 +840,6 @@ class Modular2D(gym.Env, EzPickle):
 						t = rendering.Transform(translation=trans*f.shape.pos)
 						self.viewer.draw_circle(f.shape.radius, 30, color=obj.color1).add_attr(t)
 						self.viewer.draw_circle(f.shape.radius, 30, color=obj.color2, filled=False, linewidth=2).add_attr(t)
-						#ll = 0.5 # linelength
-						#vec1 = Vector3((math.sin(f.body.angle) * ll) ,
-						#		(math.cos(f.body.angle) * ll) ,
-						#		0)
-						#vec2 = Vector3((math.sin(f.body.angle + math.pi/2) * ll) ,
-						#		(math.cos(f.body.angle + math.pi/2) * ll) ,
-						#		0)
-						#print("vec 1: ", vec1.x, vec1.y)
-						#print("vec 2: ", vec2.x, vec2.y)
 						if DISPLAY_VECTORS:
 							ll = 0.5 # linelength
 							x1 = (math.cos(f.body.angle) * ll) +f.body.position[0]

@@ -98,9 +98,6 @@ class DirectEncoding(enc.Encoding):
 				self.mutateNode(mod, morphMutationRate,mutationRate,sigma,d)
 		for con in node.availableConnections:
 			self.countModules()
-			#print(len(node.availableConnections))
-			#print("nr: ", self.n_modules)
-			#print("index: ", self.tree.index)
 			if (self.n_modules < self.maxModules and depth < self.maxDepth and random.uniform(0,1)< morphMutationRate/float(self.n_modules)):
 				# add module at connection site
 				type = random.randint(0,len(self.moduleList)-1)

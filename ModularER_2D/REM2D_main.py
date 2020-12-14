@@ -354,16 +354,13 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 	env.seed(4)
 	env.reset(tree=tree, module_list=individual.genome.moduleList)
 
-	it = 0
 	fitness = 0
 	for i in range(EVALUATION_STEPS):
-		it+=1
-		if it % INTERVAL == 0 or it == 1:
+		if i % INTERVAL == 0:
 			if not HEADLESS:
 				env.render()
 
 		action = np.ones_like(env.action_space.sample())
-		
 		observation, reward, done, info  = env.step(action)
 		
 		if reward< -10:
@@ -374,8 +371,6 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 			break
 		if reward > 0:
 			fitness = reward
-
-	# Not necessary, just to keep the keep evolutionary algorithm lingo
 	return fitness
 
 

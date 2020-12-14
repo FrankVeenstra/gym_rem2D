@@ -8,8 +8,6 @@ from enum import Enum
 from NeuralNetwork import activations as act
 #import pygame
 
-
-
 ACTIVATION_FUNCTIONS_SET = act.ActivationFunctionSet()
 #TODO move variables below, hard coded for now
 n_iterations = 10;
@@ -237,12 +235,7 @@ class CE:
 			out_cell.activity += output
 
 		output = []
-		#for cell in cellsToUpdate:
-		#	out = cell.update()
-		#	if cell.output_pointers[0].c_pointer == self.outputCell:
-		#		output.append(out)
-		#	else: 
-		#		for link in cell.output
+
 		n_layers = -1
 		for cell in self.cells:
 			if cell.layer >= n_layers:
@@ -263,23 +256,14 @@ class CE:
 								if link.c_index == cell.index:
 									#print(cell.activity,out)
 									cell.activity += out
-						#if cell.output_pointers[0].c_pointer == self.outputCell:
-						#print(out)
-						#if out != 0:
-						#	output.append(out)
-						#if (out == 0.0):
-		#print(inputs)
-		#print(output)
 		return output
 
 	def iterate(self,iterationNumber):
 		n_cells = len(self.cells)
-		# Can return if max_cells is reached?
 		for i in range(n_cells):
 			cell = self.cells[i]
 			if (useMaxCells):
 				if len(self.cells) > maxCells:
-					#print("created network from cellular encoding")
 					return
 
 			if cell.type != -1:
@@ -294,7 +278,6 @@ class CE:
 				else:
 					if s.type == 0:
 						# sequential division
-						# print("sequential")
 						p_c1 = [cell.pos[0],cell.pos[1] - (dis/np.sqrt(iterationNumber))]
 						p_c2 = [cell.pos[0],cell.pos[1] + (dis/np.sqrt(iterationNumber))]
 						c1 = cell
@@ -315,7 +298,6 @@ class CE:
 						self.cells.append(c2)
 					elif s.type == 1:
 						# parallel division
-						# print("parallel")
 						p_c1 = [cell.pos[0] - (dis/np.sqrt(iterationNumber)), cell.pos[1]]
 						p_c2 = [cell.pos[0] + (dis/np.sqrt(iterationNumber)), cell.pos[1]]
 						c1 = cell
