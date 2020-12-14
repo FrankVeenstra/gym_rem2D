@@ -49,7 +49,9 @@ from termcolor import colored, cprint
 
 # custom data analysis scripts
 # removed, contained hacky scripts. 
-from DataAnalysis import DataAnalysis as da
+import DataAnalysis as da
+
+from Experiments import ConfigurationMaker
 
 # singleton equivalent
 env = None
@@ -131,27 +133,7 @@ class Individual:
 		# should add crossover mutations, have to be done uniquely for each encoding though
 		# TODO: self.genome.crossover(CROSSOVER_RATE, other_genome);
 
-class FitnessData:
-	# A helper class that simply stores some values that can easily be plotted
-	# Note: just to use to plot fitness over time while the program is running, 
-	# all other data of the runs will be stored anyway. 
-	def __init__(self):
-		self.p_0	= []
-		self.p_25	= []
-		self.p_50	= []
-		self.p_75	= []
-		self.p_100	= []
-		self.avg	= []
-		self.divValues = []
-	def save(self, saveFile, num = ''):
-		pickle.dump(self,open(saveFile + str(num),"wb"))
-	def addFitnessData(self,fitnesses, gen):
-		self.avg.append(np.average(fitnesses))
-		self.p_0.append(np.percentile(fitnesses,0))
-		self.p_25.append(np.percentile(fitnesses,25))
-		self.p_50.append(np.percentile(fitnesses,50))
-		self.p_75.append(np.percentile(fitnesses,75))
-		self.p_100.append(np.percentile(fitnesses,100))
+
 
 class run2D():
 	"""
@@ -163,7 +145,7 @@ class run2D():
 		self.start_time = datetime.datetime.now()
 		self.time = datetime.datetime.now()
 		self.initialize_parameters_from_config_file(dir,config)
-		self.fitnessData = FitnessData() # stores data of the progression
+		self.fitnessData = da.FitnessData() # stores data of the progression
 
 		# TODO take from configuration file
 		self.EVALUATION_STEPS = 10000
@@ -244,12 +226,15 @@ class run2D():
 		self.PLOT_FITNESS = False
 		if (int(config['visualization']['v_progression']) == 1):
 			self.PLOT_FITNESS = True
+			self.plotter = da.Plotter()
 		# plot tree structure of current individual being evaluated (for debugging)
 		self.PLOT_TREE = False
 		if (int(config['visualization']['v_tree']) == 1):
-			self.PLOT_TREE = True
+			""" Deprecated debug function """
+			print("Note: visualization of the tree structure was set to true, this is not functional in this version." )
+			self.PLOT_TREE = False
 
-	def run_deap(self, config, population = None):
+	def run_deap(self, config, population = None, useTQDM = True):
 		'''
 		This function initializes and runs an EA from DEAP. You can find more information on how you can use DEAP
 		at: https://deap.readthedocs.io/en/master/examples/es_fctmin.html 
@@ -282,7 +267,7 @@ class run2D():
 		gen = 0 # keep track of generations simulated
 		print("headless mode:", self.headless)
 		
-		if self.headless:
+		if not useTQDM:
 			writer = sys.stdout
 			range_ = range(N_GENERATIONS)
 		else:
@@ -313,7 +298,7 @@ class run2D():
 			dt = datetime.datetime.now()-self.time
 			self.time = datetime.datetime.now()
 			writer.write("Generation %d evaluated ( %s ) : Min %s, Max %s, Avg %s" % (i + 1, dt,min,max,mean))
-			if self.headless:
+			if not useTQDM:
 				writer.write("\n")
 			self.EVALUATION_NR+=len(population)
 
@@ -321,6 +306,7 @@ class run2D():
 			self.fitnessData.addFitnessData(fitness_values,gen)
 			if self.SAVEDATA:
 				if (i % self.CHECKPOINT_FREQUENCY == 0 or i == N_GENERATIONS):
+					#self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
 					self.fitnessData.save(self.SAVE_FILE_DIRECTORY)
 					pickle.dump(population,open(self.SAVE_FILE_DIRECTORY + self.POPULATION_FILE + str(i), "wb"))
 
@@ -377,8 +363,7 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 				env.render()
 
 		action = np.ones_like(env.action_space.sample())
-		# action happens in the env.step function ... np.ones_like is actually overwritten. 
-		# not entirely sure how to solve this
+		
 		observation, reward, done, info  = env.step(action)
 		
 		if reward< -10:
@@ -394,13 +379,13 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 	return fitness
 
 
-def setup():
+def setup(directory = None):
 	parser = argparse.ArgumentParser(description='Process arguments for configurations.')
 	parser.add_argument('--file',type = str, help='config file', default="0.cfg")
 	parser.add_argument('--seed',type = int, help='seed', default=0)
 	parser.add_argument('--headless',type = int, help='headless mode', default=0)
 	parser.add_argument('--n_processes',type = int, help='number of processes to use', default=1)
-	parser.add_argument('--output',type = str, help='output directory', default='')
+	parser.add_argument('--output',type = str, help='output directory', default='results')
 	parser.add_argument('--wallclock-time-limit', type=int, help='wall-clock limit in seconds', default=sys.maxsize)
 	args = parser.parse_args()
 	random.seed(int(args.seed))
@@ -408,25 +393,37 @@ def setup():
 
 	config = configparser.ConfigParser()
 
-	directory = os.path.dirname(os.path.abspath(__file__))
+	newdir = ''
+	if directory is None:
+		directory = os.path.dirname(os.path.abspath(__file__))
+
 	orig_cwd = os.getcwd()
 	print("original CWD:", orig_cwd)
 	os.chdir(directory)
-
+	newdir = os.path.join(directory, args.output) + "/" # newdir can create a subfolder
+	if not os.path.exists(newdir):
+		os.makedirs(newdir)
+		print("created the ", newdir)
+	
 	expnr = int(args.seed)
 	if int(expnr) < 0:
 		raise("invalid experiment number")
 
-	config_to_read = os.path.join(directory,str(args.file))
+	config_to_read = os.path.join(newdir,str(args.file))
 	print('reading: ', config_to_read)
 	if not os.path.isfile(config_to_read):
-		sys.exit("Could not find configuration file, quitting")
-	config.read(config_to_read)
+		print("Could not find configuration file, running configuration maker instead")
+		config = ConfigurationMaker.create(dir=newdir)
+		ConfigurationMaker.save_config(config)
+	else:
+		config.read(config_to_read)
+
+
 
 	general_config = os.path.join(directory , '_g.cfg')
 	print('reading: ', general_config)
 	if not os.path.isfile(general_config):
-		sys.exit("No common configuration specified")
+		print("No common configuration file specified")
 	config.read(general_config)
 
 	print("working from ", directory)
@@ -434,10 +431,7 @@ def setup():
 		for (each_key, each_val) in config.items(each_section):
 			print(each_key, each_val)
 
-	newdir = os.path.join(orig_cwd, args.output)
-	if not os.path.exists(newdir):
-		os.makedirs(newdir)
-		print("created the ", newdir)
+
 
 	config.set("ea", "wallclock_time_limit", str(args.wallclock_time_limit))
 	return config, newdir
