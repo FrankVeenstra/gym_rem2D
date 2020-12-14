@@ -198,7 +198,7 @@ class Modular2D(gym.Env, EzPickle):
 		self.seed(random_seed)
 		self.viewer = None
 		self.tree_morphology = None
-		self.scroll = 0#12-VIEWPORT_W/SCALE/5
+		self.scroll = 0 # 12-VIEWPORT_W/SCALE/5
 		self.scroll_y = 0
 		self.robot = None
 		self.world = Box2D.b2World()
@@ -450,7 +450,6 @@ class Modular2D(gym.Env, EzPickle):
 		)
 		self.joints.append(self.world.CreateJoint(rjd))
 
-
 	def create_joint(self,parent_component,new_component,connection_site,actuated =True):
 		# First the local coordinates are calculated based on the absolute coordinates and angles of the parent, child and connection site
 		
@@ -482,40 +481,11 @@ class Modular2D(gym.Env, EzPickle):
 			return joint;
 			return rjd
 		return
-		# backup
-		# TODO joint has no local coordinate system
-		if (actuated == True):
-			rjd = revoluteJointDef(
-				bodyA=p_c,
-				bodyB=ncomponent,
-				localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
-				localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
-				enableMotor=True,
-				enableLimit=True,
-				maxMotorTorque=MOTORS_TORQUE,
-				motorSpeed = 0,	
-				lowerAngle = -math.pi/2,
-				upperAngle = math.pi/2,
-				referenceAngle = 0
-			)
-			return rjd
-		else:
-			rjd = revoluteJointDef(
-				bodyA=p_c,
-				bodyB=ncomponent,
-				localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
-				localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
-				enableMotor=False,
-				enableLimit=False,
-				referenceAngle = 0
-			)
-			return rjd
-		return rjd
 
 	def create_circle_module(self,module=None,node=None,connection_site=None, p_c=None, module_list=None):
 		# get module height and width
 		if p_c is not None and connection_site is None:
-			raise("When you want to attach a new component to a parent component, you have to supply",
+			raise("When attaching a new component to a parent component, you have to supply",
 			"a connection_site object with it. This connection_site object defines where to anchor",
 			"the joint in between to components")
 		n_radius = 0.5
@@ -672,7 +642,6 @@ class Modular2D(gym.Env, EzPickle):
 
 		return components,joints
 
-
 	def create_component(self, module = None, node=None, nodes=None, parent_component=None, module_list=None, connection_site = None):
 		"""Should create a component of the robot knowing the parent component
 		and the connection coordinates"""
@@ -743,15 +712,12 @@ class Modular2D(gym.Env, EzPickle):
 				return(components, joints)
 			else:
 				raise("Module type not found")
-		if node.module_.type == "JET":
-			return(self.createJetModule(node,nodes, parent_component,module_list))
-		elif node.module_.type == "CIRCLE":
+		if node.module_.type == "CIRCLE":
 			return(self.create_circle_module(node,nodes, parent_component,module_list))
 		elif node.module_.type == "SIMPLE":
 			return(self.create_simple_module(node,nodes, parent_component,module_list))
 		elif node.module_.type == "EMERGE":
 			return(self.createEmergeModule(node,nodes, parent_component,module_list))
-
 
 	def get_connection_site(self, parent,node,module_list):
 		con = node.parent_connection_coordinates
@@ -768,8 +734,6 @@ class Modular2D(gym.Env, EzPickle):
 			global_angle = Vector3(local_angle+parent.angle,0,0)
 			return ConnectionSite(global_position,global_angle)
 
-
-	
 	def create_robot(self,nodes,module_list):
 		# Instance to store robot components created from nodes
 		self.robot = ModularRobotBox2D()
@@ -817,6 +781,7 @@ class Modular2D(gym.Env, EzPickle):
 					# parent found but not expressed
 					pass
 		return
+	
 	def reset(self, tree=None, module_list=None):
 		self.wod = WallOfDeath(WOD_SPEED)
 		self.wod.position = 0.0
@@ -851,7 +816,6 @@ class Modular2D(gym.Env, EzPickle):
 		else:
 			self.drawlist = self.terrain
 		return
-
 
 	def PID(self,desiredAngle,joint):
 		proportional = 1.9
@@ -901,82 +865,9 @@ class Modular2D(gym.Env, EzPickle):
 					reward = -100
 					done   = True
 		else:
-			return
+			raise Exception("no tree_morphology")
 
 		return observation, reward, done, info
-
-
-
-
-
-		#self.hull.ApplyForceToCenter((0, 20), True) -- Uncomment this to receive a bit of stability help
-		control_speed = False  # Should be easier as well
-		if control_speed:
-			self.joints[0].motorSpeed = float(SPEED_HIP  * np.clip(action[0], -1, 1))
-			self.joints[1].motorSpeed = float(SPEED_KNEE * np.clip(action[1], -1, 1))
-			self.joints[2].motorSpeed = float(SPEED_HIP  * np.clip(action[2], -1, 1))
-			self.joints[3].motorSpeed = float(SPEED_KNEE * np.clip(action[3], -1, 1))
-		else:
-			self.joints[0].motorSpeed     = float(SPEED_HIP     * np.sign(action[0]))
-			self.joints[0].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[0]), 0, 1))
-			self.joints[1].motorSpeed     = float(SPEED_KNEE    * np.sign(action[1]))
-			self.joints[1].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[1]), 0, 1))
-			self.joints[2].motorSpeed     = float(SPEED_HIP     * np.sign(action[2]))
-			self.joints[2].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[2]), 0, 1))
-			self.joints[3].motorSpeed     = float(SPEED_KNEE    * np.sign(action[3]))
-			self.joints[3].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[3]), 0, 1))
-
-		self.world.Step(1.0/FPS, 6*30, 2*30)
-
-		pos = self.hull.position
-		vel = self.hull.linearVelocity
-
-		for i in range(10):
-			self.lidar[i].fraction = 1.0
-			self.lidar[i].p1 = pos
-			self.lidar[i].p2 = (
-				pos[0] + math.sin(1.5*i/10.0)*LIDAR_RANGE,
-				pos[1] - math.cos(1.5*i/10.0)*LIDAR_RANGE)
-			self.world.RayCast(self.lidar[i], self.lidar[i].p1, self.lidar[i].p2)
-
-		state = [
-			self.hull.angle,        # Normal angles up to 0.5 here, but sure more is possible.
-			2.0*self.hull.angularVelocity/FPS,
-			0.3*vel.x*(VIEWPORT_W/SCALE)/FPS,  # Normalized to get -1..1 range
-			0.3*vel.y*(VIEWPORT_H/SCALE)/FPS,
-			self.joints[0].angle,   # This will give 1.1 on high up, but it's still OK (and there should be spikes on hiting the ground, that's normal too)
-			self.joints[0].speed / SPEED_HIP,
-			self.joints[1].angle + 1.0,
-			self.joints[1].speed / SPEED_KNEE,
-			1.0 if self.legs[1].ground_contact else 0.0,
-			self.joints[2].angle,
-			self.joints[2].speed / SPEED_HIP,
-			self.joints[3].angle + 1.0,
-			self.joints[3].speed / SPEED_KNEE,
-			1.0 if self.legs[3].ground_contact else 0.0
-			]
-		state += [l.fraction for l in self.lidar]
-		assert len(state)==24
-
-		self.scroll = pos.x - VIEWPORT_W/SCALE/5
-
-		shaping  = 130*pos[0]/SCALE   # moving forward is a way to receive reward (normalized to get 300 on completion)
-		shaping -= 5.0*abs(state[0])  # keep head straight, other than that and falling, any behavior is unpunished
-
-		reward = 0
-		if self.prev_shaping is not None:
-			reward = shaping - self.prev_shaping
-		self.prev_shaping = shaping
-
-		for a in action:
-			reward -= 0.00035 * MOTORS_TORQUE * np.clip(np.abs(a), 0, 1)
-			# normalized to about -50.0 using heuristic, more optimal agent should spend less
-
-		done = False
-
-		if pos[0] > (TERRAIN_LENGTH-TERRAIN_GRASS)*TERRAIN_STEP:
-			done   = True
-		return np.array(state), reward, done, {}
 
 	def render(self, mode='human'):
 		from gym.envs.classic_control import rendering
@@ -1106,82 +997,4 @@ class Modular2D(gym.Env, EzPickle):
 		if self.viewer is not None:
 			self.viewer.close()
 			self.viewer = None
-
-if __name__=="__main__":
-	# Heurisic: suboptimal, have no notion of balance.
-	env = BipedalWalker()
-	env.reset()
-	steps = 0
-	total_reward = 0
-	a = np.array([0.0, 0.0, 0.0, 0.0])
-	STAY_ON_ONE_LEG, PUT_OTHER_DOWN, PUSH_OFF = 1,2,3
-	SPEED = 0.29  # Will fall forward on higher speed
-	state = STAY_ON_ONE_LEG
-	moving_leg = 0
-	supporting_leg = 1 - moving_leg
-	SUPPORT_KNEE_ANGLE = +0.1
-	supporting_knee_angle = SUPPORT_KNEE_ANGLE
-	while True:
-		s, r, done, info = env.step(a)
-		total_reward += r
-		if steps % 20 == 0 or done:
-			print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
-			print("step {} total_reward {:+0.2f}".format(steps, total_reward))
-			print("hull " + str(["{:+0.2f}".format(x) for x in s[0:4] ]))
-			print("leg0 " + str(["{:+0.2f}".format(x) for x in s[4:9] ]))
-			print("leg1 " + str(["{:+0.2f}".format(x) for x in s[9:14]]))
-		steps += 1
-
-		contact0 = s[8]
-		contact1 = s[13]
-		moving_s_base = 4 + 5*moving_leg
-		supporting_s_base = 4 + 5*supporting_leg
-
-		hip_targ  = [None,None]   # -0.8 .. +1.1
-		knee_targ = [None,None]   # -0.6 .. +0.9
-		hip_todo  = [0.0, 0.0]
-		knee_todo = [0.0, 0.0]
-
-		if state==STAY_ON_ONE_LEG:
-			hip_targ[moving_leg]  = 1.1
-			knee_targ[moving_leg] = -0.6
-			supporting_knee_angle += 0.03
-			if s[2] > SPEED: supporting_knee_angle += 0.03
-			supporting_knee_angle = min( supporting_knee_angle, SUPPORT_KNEE_ANGLE )
-			knee_targ[supporting_leg] = supporting_knee_angle
-			if s[supporting_s_base+0] < 0.10: # supporting leg is behind
-				state = PUT_OTHER_DOWN
-		if state==PUT_OTHER_DOWN:
-			hip_targ[moving_leg]  = +0.1
-			knee_targ[moving_leg] = SUPPORT_KNEE_ANGLE
-			knee_targ[supporting_leg] = supporting_knee_angle
-			if s[moving_s_base+4]:
-				state = PUSH_OFF
-				supporting_knee_angle = min( s[moving_s_base+2], SUPPORT_KNEE_ANGLE )
-		if state==PUSH_OFF:
-			knee_targ[moving_leg] = supporting_knee_angle
-			knee_targ[supporting_leg] = +1.0
-			if s[supporting_s_base+2] > 0.88 or s[2] > 1.2*SPEED:
-				state = STAY_ON_ONE_LEG
-				moving_leg = 1 - moving_leg
-				supporting_leg = 1 - moving_leg
-
-		if hip_targ[0]: hip_todo[0] = 0.9*(hip_targ[0] - s[4]) - 0.25*s[5]
-		if hip_targ[1]: hip_todo[1] = 0.9*(hip_targ[1] - s[9]) - 0.25*s[10]
-		if knee_targ[0]: knee_todo[0] = 4.0*(knee_targ[0] - s[6])  - 0.25*s[7]
-		if knee_targ[1]: knee_todo[1] = 4.0*(knee_targ[1] - s[11]) - 0.25*s[12]
-
-		hip_todo[0] -= 0.9*(0-s[0]) - 1.5*s[1] # PID to keep head strait
-		hip_todo[1] -= 0.9*(0-s[0]) - 1.5*s[1]
-		knee_todo[0] -= 15.0*s[3]  # vertical speed, to damp oscillations
-		knee_todo[1] -= 15.0*s[3]
-
-		a[0] = hip_todo[0]
-		a[1] = knee_todo[0]
-		a[2] = hip_todo[1]
-		a[3] = knee_todo[1]
-		a = np.clip(0.5*a, -1.0, 1.0)
-
-		env.render()
-		if done: break
 
