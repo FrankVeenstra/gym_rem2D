@@ -20,8 +20,7 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 			if not HEADLESS:
 				env.render()
 
-		# Note that the evaluation function is not designed to be integrated with the action space of OpenAI gym 
-		# since the variables list changes in size. 
+		# Note that the evaluation function is not designed to be integrated with the action space of OpenAI gym. 
 		# TODO: 
 		action = np.ones_like(env.action_space.sample())	
 

@@ -137,20 +137,6 @@ class ModularRobotBox2D:
 		return self
 
 
-class JetParticles:
-	def __init__(self):
-		self.depth = 15
-		self.interval = 10
-		self.number = 0
-		# particles will become a two dimensional array with vector2 for each separate particle
-		self.particles = []
-	def update(self, particles):
-		self.number+=1
-		if (self.number % self.interval == 0):
-			self.particles.append(particles)
-			if (len(self.particles) > self.depth):
-				self.particles.remove(self.particles[0])
-
 class Vector3:
 	"""
 	This instance just helped me out wrapping my mind around Box2D and its construction process 
@@ -182,7 +168,6 @@ class WallOfDeath:
 		
 
 
-jet_particles = JetParticles()
 
 class ContactDetector(contactListener):
 	def __init__(self, env):
@@ -836,6 +821,7 @@ class Modular2D(gym.Env, EzPickle):
 		self.wod = WallOfDeath(WOD_SPEED)
 		self.wod.position = 0.0
 		self.tree_morphology = copy.deepcopy(tree)
+
 		self._destroy()
 		# Creating the world since not all objects were properly deleted. TODO need to debug this
 		self.world = Box2D.b2World()
@@ -865,354 +851,7 @@ class Modular2D(gym.Env, EzPickle):
 		else:
 			self.drawlist = self.terrain
 		return
-		handledNodes = []
 
-		# adjust fixture
-		fixture = None
-
-		# create first component
-
-		if (nodes[0].module_.type == "CIRCLE"):
-			n_radius = nodes[0].module_.radius
-			fixture = fixtureDef(
-					shape=Box2D.b2CircleShape(radius = n_radius*MODULE_W),
-					density=1.0 * (n_radius *n_radius) * math.pi,
-					friction=0.1,
-					restitution=0.0,
-					categoryBits=0x0020,
-					maskBits=0x001
-				)
-		else:
-			n_width = nodes[0].module_.width
-			n_height = nodes[0].module_.height
-			fixture = fixtureDef(
-					shape=polygonShape(box=(n_width * MODULE_W, n_height * MODULE_H)),
-					density=1.0 * n_height * n_width,
-					friction=0.1,
-					restitution=0.0,
-					categoryBits=0x0020,
-					maskBits=0x001
-				)
-
-
-		component = self.world.CreateDynamicBody(
-			position=(init_x,init_y),
-			fixtures = fixture)
-		component.color1 = (0.5,0.4,0.9)
-		component.color2 = (0.3,0.3,0.5)
-		nodes[0].component = [component]
-		nodes[0].expressed = True
-		components = []
-		components.append(component)
-		handledNodes.append(nodes[0])
-		self.joints = []
-
-		for n in nodes:
-			if n.index not in handledNodes:
-				handledNodes.append(n)
-				off = n.index
-				# the component index keeps track of the handle of any created objects
-				parent, compIndex = self.get_component_index(n,handledNodes)
-				#if compIndex == -1:
-				#	print("No parent node found")
-				# Can only create a module if the parent is actually expressed. Modules created below the surface are not valid and can therefore cause no parent module to be expressed
-				# Get parent node 
-				if parent is not None and parent.expressed:
-					# if the parent is expressed its component should not be None
-					newComponents, newJoints = self.create_component(n, nodes, parent,module_list)
-					for com in newComponents:
-						components.append(com)
-					for j in newJoints:
-						self.joints.append(j)
-					if len(newComponents)> 0:
-						n.expressed= True
-				else:
-					# parent found but not expressed
-					pass
-		for c in components:
-			self.robot.append(c)
-			#c.ApplyForceToCenter((self.np_random.uniform(-INITIAL_RANDOM, INITIAL_RANDOM), 0), True)
-
-		self.drawlist = self.terrain + self.robot + self.joints
-		return
-
-		for n in nodes:
-			if (n.index not in handledNodes):
-				handledNodes.append(n.index)
-				off = n.index
-				compIndex = -1
-				for i in range(len(handledNodes)):
-					if (handledNodes[i] == n.parent):
-						compIndex = i
-						break
-				if (compIndex == -1 and n.parent is not None and n.component is not None):
-					raise Exception("parent was not present in the components")
-
-			
-				# change following code in functions
-				if n.module.type == "JET":
-					angle = components[compIndex].angle
-					c_angle = angle + (n.orientation.value[0] * n.module.angle)		
-					# get module height and width
-					n_width = n.module.width
-					n_height = n.module.height
-					# get parent node
-					par = None
-					for parent in nodes:
-						if parent.index == n.parent:
-							par = parent
-
-					# get parent module height 
-					p_h = n.module.height
-					if (n.orientation != n.module.connection_type.top):
-						p_h = module_list[par.type].width
-
-					pos = []
-					pos.append(math.sin(c_angle) * (n_height + p_h) * 0.25 + components[compIndex].position[0])
-					pos.append(math.cos(c_angle) * (n_height + p_h) * 0.25 + components[compIndex].position[1])
-					fixture = fixtureDef(
-							shape=polygonShape(box=(n_width * MODULE_W, n_height * MODULE_H)),
-							density=1.0 * n_height * n_width,
-							friction=0.1,
-							restitution=0.0,
-							categoryBits=0x0020,
-							maskBits=0x001
-						)
-					ncomponent = self.world.CreateDynamicBody(
-						position=(pos[0],pos[1]),
-						angle = c_angle,
-						fixtures = fixture)
-					color = cmap(n.type/5)
-					ncomponent.color1 = (color[0],color[1],color[2])
-					ncomponent.color2 = (color[0],color[1],color[2])
-					components.append(ncomponent)
-					n.component = ncomponent
-					n.type = "JET"
-					jointPosition = []
-					jointPosition.append(pos[0]-components[compIndex].position[0])
-					jointPosition.append(pos[1]-components[compIndex].position[1])
-					# TODO joint has no local coordinate system
-					rjd = revoluteJointDef(
-						bodyA=components[compIndex],
-						bodyB=ncomponent,
-						localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
-						localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
-						enableMotor=True,
-						enableLimit=True,
-						maxMotorTorque=MOTORS_TORQUE,
-						motorSpeed = 0,
-						lowerAngle = -math.pi/2,
-						upperAngle = math.pi/2,
-						referenceAngle = 0
-					)
-					self.joints.append(self.world.CreateJoint(rjd))
-
-				else:
-						
-					if (n.module.type == "SIMPLE"):
-						angle = components[compIndex].angle
-						c_angle = angle + (n.orientation.value[0] * n.module.angle)
-						ncomponent = None
-						pos = []
-
-						# get module height and width
-						n_width = n.module.width
-						n_height = n.module.height
-				
-						# get parent node
-						par = None
-						for parent in nodes:
-							if parent.index == n.parent:
-								par = parent
-
-						# get parent module height 
-						p_h = None
-						if (par.module.type == "CIRCLE"):
-							p_h = par.module.radius
-						else:
-							p_h = par.module.height
-							if (n.orientation != par.module.connection_type.top):
-								p_h = par.module.width
-
-
-						pos.append(math.sin(c_angle) * (n_height + p_h) * 0.25 + components[compIndex].position[0])
-						pos.append(math.cos(c_angle) * (n_height + p_h) * 0.25 + components[compIndex].position[1])
-				
-				
-						fixture = fixtureDef(
-								shape=polygonShape(box=(n_width * MODULE_W, n_height * MODULE_H)),
-								density=1.0 * n_height * n_width,
-								friction=0.1,
-								restitution=0.0,
-								categoryBits=0x0020,
-								maskBits=0x001
-							)
-
-						ncomponent = self.world.CreateDynamicBody(
-							position=(pos[0],pos[1]),
-							angle = c_angle,
-							fixtures = fixture)
-						color = cmap(n.type/5)
-						ncomponent.color1 = (color[0],color[1],color[2])
-						ncomponent.color2 = (color[0],color[1],color[2])
-						components.append(ncomponent)
-						n.component = ncomponent
-					elif(n.module.type == "CIRCLE"):
-						# get module height and width
-						n_radius = n.module.radius
-						# for the circle, height == radius
-				
-						# get parent node
-						par = None
-						for parent in nodes:
-							if parent.index == n.parent:
-								par = parent
-
-
-						# get parent module height 
-						p_r = None
-						if (par.module.type == "CIRCLE"):
-							p_r = par.module.radius
-						else:
-							p_r = par.module.height
-							if (n.orientation != par.module.connection_type.top):
-								p_r = par.module.width
-						if (par is not None and par.component != None):
-							angle = components[compIndex].angle
-							c_angle = angle + (n.orientation.value[0] * n.module.angle)
-							ncomponent = None
-							pos = []
-							pos.append(math.sin(c_angle) * (p_r + n_radius) * 0.25 + components[compIndex].position[0])
-							pos.append(math.cos(c_angle) * (p_r + n_radius) * 0.25 + components[compIndex].position[1])
-							if (pos[1] - n_radius > TERRAIN_HEIGHT):							
-
-
-								fixture = fixtureDef(
-										shape=Box2D.b2CircleShape(radius =n_radius * MODULE_W),
-										density=1.0 * (n_radius *n_radius) * math.pi,
-										friction=0.1,
-										restitution=0.0,
-										categoryBits=0x0020,
-										maskBits=0x001
-									)
-
-								ncomponent = self.world.CreateDynamicBody(
-									position=(pos[0],pos[1]),
-									angle = c_angle,
-									fixtures = fixture)
-								color = cmap(n.type/5)
-								ncomponent.color1 = (color[0],color[1],color[2])
-								ncomponent.color2 = (color[0],color[1],color[2])
-								components.append(ncomponent)
-								n.component = ncomponent
-
-								if pos[1] < lowestY:
-									lowestY = pos[1]
-
-								jointPosition = []
-								jointPosition.append(pos[0]-components[compIndex].position[0])
-								jointPosition.append(pos[1]-components[compIndex].position[1])
-								# TODO joint has no local coordinate system
-								rjd = revoluteJointDef(
-									bodyA=components[compIndex],
-									bodyB=ncomponent,
-									localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
-									localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
-									enableMotor=True,
-									enableLimit=True,
-									maxMotorTorque=MOTORS_TORQUE,
-									motorSpeed = 0,
-									lowerAngle = -math.pi/2,
-									upperAngle = math.pi/2,
-									referenceAngle = 0
-								)
-								self.joints.append(self.world.CreateJoint(rjd))
-						else:
-							n.component = None
-
-		for c in components:
-			self.robot.append(c)
-			#c.ApplyForceToCenter((self.np_random.uniform(-INITIAL_RANDOM, INITIAL_RANDOM), 0), True)
-
-		self.drawlist = self.terrain + self.robot + self.joints
-		return 
-		#self.step(np.array([0,0,0,0]))[0]
-		return
-		self.world.contactListener_bug_workaround = ContactDetector(self)
-		self.world.contactListener = self.world.contactListener_bug_workaround
-		self.game_over = False
-		self.prev_shaping = None
-		self.scroll = 0.0
-		self.lidar_render = 0
-
-		W = VIEWPORT_W/SCALE
-		H = VIEWPORT_H/SCALE
-
-
-		self._generate_terrain(self.hardcore)
-		self._generate_clouds()
-
-		init_x = TERRAIN_STEP*TERRAIN_STARTPAD/2
-		init_y = TERRAIN_HEIGHT+2*LEG_H
-		self.hull = self.world.CreateDynamicBody(
-			position = (init_x, init_y),
-			fixtures = HULL_FD
-				)
-		self.hull.color1 = (0.5,0.4,0.9)
-		self.hull.color2 = (0.3,0.3,0.5)
-		self.hull.ApplyForceToCenter((self.np_random.uniform(-INITIAL_RANDOM, INITIAL_RANDOM), 0), True)
-
-		self.legs = []
-		self.joints = []
-		for i in [-1,+1]:
-			leg = self.world.CreateDynamicBody(
-				position = (init_x, init_y - LEG_H/2 - LEG_DOWN),
-				angle = (i*0.05),
-				fixtures = LEG_FD
-				)
-			leg.color1 = (0.6-i/10., 0.3-i/10., 0.5-i/10.)
-			leg.color2 = (0.4-i/10., 0.2-i/10., 0.3-i/10.)
-			rjd = revoluteJointDef(
-				bodyA=self.hull,
-				bodyB=leg,
-				localAnchorA=(0, LEG_DOWN),
-				localAnchorB=(0, LEG_H/2),
-				enableMotor=True,
-				enableLimit=True,
-				maxMotorTorque=MOTORS_TORQUE,
-				motorSpeed = i,
-				lowerAngle = -0.8,
-				upperAngle = 1.1,
-				)
-			self.legs.append(leg)
-			self.joints.append(self.world.CreateJoint(rjd))
-
-			lower = self.world.CreateDynamicBody(
-				position = (init_x, init_y - LEG_H*3/2 - LEG_DOWN),
-				angle = (i*0.05),
-				fixtures = LOWER_FD
-				)
-			lower.color1 = (0.6-i/10., 0.3-i/10., 0.5-i/10.)
-			lower.color2 = (0.4-i/10., 0.2-i/10., 0.3-i/10.)
-			rjd = revoluteJointDef(
-				bodyA=leg,
-				bodyB=lower,
-				localAnchorA=(0, -LEG_H/2),
-				localAnchorB=(0, LEG_H/2),
-				enableMotor=True,
-				enableLimit=True,
-				maxMotorTorque=MOTORS_TORQUE,
-				motorSpeed = 1,
-				lowerAngle = -1.6,
-				upperAngle = -0.1,
-				)
-			lower.ground_contact = False
-			self.legs.append(lower)
-			self.joints.append(self.world.CreateJoint(rjd))
-
-		self.drawlist = self.terrain + self.legs + [self.hull]
-
-		return self.step(np.array([0,0,0,0]))[0]
 
 	def PID(self,desiredAngle,joint):
 		proportional = 1.9
@@ -1242,18 +881,6 @@ class Modular2D(gym.Env, EzPickle):
 						color = cmap(c_values[-1])
 						if n.expressed and n.component is not None:
 							n.component[0].color2 = (color[0],color[1],color[2])
-				if n.type == "JET":
-					angle = n.component.angle
-					vec = []
-					vec.append(math.sin(angle) * -JET_FORCE)
-					vec.append(math.cos(angle) * -JET_FORCE)
-					n.component.ApplyForceToCenter(vec,True)
-					if jet_particles:
-						particle = []
-						particle.append(n.component.position[0])
-						particle.append(n.component.position[1])
-						particles.append(particle)
-			jet_particles.update(particles)
 			for i,j in enumerate(self.robot.joints):
 				j.motorSpeed = self.PID(c_values[i+1],j)
 
@@ -1425,12 +1052,7 @@ class Modular2D(gym.Env, EzPickle):
 					self.viewer.draw_circle(0.1, 30).add_attr(t)
 					t = rendering.Transform(translation=obj.anchorB)
 					self.viewer.draw_circle(0.1, 30, color = (0,0,250)).add_attr(t)
-		if jet_particles:
-			for ps in jet_particles.particles:
-				for p in ps:
-					t = rendering.Transform(translation = p)
-					self.viewer.draw_circle(0.1, 30).add_attr(t)
-
+		
 		if self.wod:
 			wodposdown = []
 			wodposup = []
@@ -1448,7 +1070,6 @@ class Modular2D(gym.Env, EzPickle):
 		f = [(x, flagy2), (x, flagy2-10/SCALE), (x+25/SCALE, flagy2-5/SCALE)]
 		self.viewer.draw_polygon(f, color=(0.9,0.2,0) )
 		self.viewer.draw_polyline(f + [f[0]], color=(0,0,0), linewidth=2 )
-
 		return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
 		# ------------------------------

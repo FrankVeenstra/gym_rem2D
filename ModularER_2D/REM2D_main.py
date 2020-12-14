@@ -136,13 +136,13 @@ class FitnessData:
 	# Note: just to use to plot fitness over time while the program is running, 
 	# all other data of the runs will be stored anyway. 
 	def __init__(self):
-		self.p_0 = []
-		self.p_25 = []
-		self.p_50 = []
-		self.p_75 = []
-		self.p_100 = []
-		self.avg = []
-		self.divValues =[]
+		self.p_0	= []
+		self.p_25	= []
+		self.p_50	= []
+		self.p_75	= []
+		self.p_100	= []
+		self.avg	= []
+		self.divValues = []
 	def save(self, saveFile, num = ''):
 		pickle.dump(self,open(saveFile + str(num),"wb"))
 	def addFitnessData(self,fitnesses, gen):
@@ -377,7 +377,8 @@ def evaluate(individual, EVALUATION_STEPS= 10000, HEADLESS=True, INTERVAL=100, E
 				env.render()
 
 		action = np.ones_like(env.action_space.sample())
-		
+		# action happens in the env.step function ... np.ones_like is actually overwritten. 
+		# not entirely sure how to solve this
 		observation, reward, done, info  = env.step(action)
 		
 		if reward< -10:
