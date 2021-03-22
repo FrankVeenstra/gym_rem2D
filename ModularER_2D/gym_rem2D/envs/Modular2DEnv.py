@@ -83,9 +83,6 @@ class ModularRobotBox2D:
 
 
 class Vector3:
-	"""
-	This instance just helped me out wrapping my mind around Box2D and its construction process 
-	"""
 	def __init__(self,x=None,y=None,z=None):
 		self.x = x
 		self.y = y
@@ -398,13 +395,13 @@ class Modular2D(gym.Env, EzPickle):
 		
 		disA = math.sqrt(math.pow(connection_site.position.x - parent_component.position.x,2)+math.pow(connection_site.position.y - parent_component.position.y,2))
 		local_anchor_a = Vector3(connection_site.position.x- parent_component.position.x, connection_site.position.y - parent_component.position.y,0)
-		local_anchor_a.x = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
-		local_anchor_a.y = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
+		local_anchor_a.x = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA
+		local_anchor_a.y = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA
 		
 		disB = math.sqrt(math.pow(connection_site.position.x - new_component.position.x,2)+math.pow(connection_site.position.y - new_component.position.y,2))
 		local_anchor_b = Vector3(new_component.position.x-connection_site.position.x, new_component.position.y - connection_site.position.y,0)
-		local_anchor_b.x = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
-		local_anchor_b.y = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
+		local_anchor_b.x = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB
+		local_anchor_b.y = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB
 		
 		if (actuated == True):
 			rjd = revoluteJointDef(
@@ -782,12 +779,15 @@ class Modular2D(gym.Env, EzPickle):
 		if self.tree_morphology is not None:
 			for n in self.tree_morphology.nodes:
 				if n.controller != None:
-					c_values.append(n.controller.update(0))
+					if n.expressed and n.component is not None:
+						c_values.append(n.controller.update(0))
 					if (COLOR_CONTROL):
 						cmap = plt.get_cmap('viridis')
 						color = cmap(c_values[-1])
 						if n.expressed and n.component is not None:
 							n.component[0].color2 = (color[0],color[1],color[2])
+			# controller values should be 1 less than the total number of joints (root node does not have a joint)
+			assert len(c_values) ==  len(self.robot.joints)-1
 			for i,j in enumerate(self.robot.joints):
 				j.motorSpeed = self.PID(c_values[i+1],j)
 
