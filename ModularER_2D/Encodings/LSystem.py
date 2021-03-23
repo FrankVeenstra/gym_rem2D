@@ -7,7 +7,7 @@ import numpy as np
 
 # printing tree structures and activation levels -> should go to phenotype like file
 # TODO global variable for collision environment
-from Encodings import Abstract_Encoding as enc
+from Encodings import abstract_encoding as enc
 import Tree as tree_structure
 
 # two options, overwrite previous or append previous

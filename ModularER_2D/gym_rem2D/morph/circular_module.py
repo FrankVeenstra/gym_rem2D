@@ -5,8 +5,7 @@
 Standard BOX 2D module with single joint
 """
 
-#from gym_rem.morph.exception import ModuleAttached, ConnectionObstructed
-#from gym_rem.morph.module import Module
+import gym_rem2D.morph.module_utility as mu
 from gym_rem.utils import Rot
 
 from enum import Enum
@@ -17,7 +16,7 @@ from Controller import m_controller
 import random
 import math
 from gym_rem2D.morph import abstract_module
-from gym_rem2D.morph import SimpleModule as sm
+from gym_rem2D.morph import simple_module as sm
 import Box2D as B2D
 from Box2D.b2 import (edgeShape, fixtureDef, polygonShape, revoluteJointDef, contactListener)
 
@@ -72,7 +71,7 @@ class Circular2D(abstract_module.Module):
 		if random.uniform(0,1) < MORPH_MUTATION_RATE:
 			self.radius = random.gauss(self.radius, MUT_SIGMA)
 		if random.uniform(0,1) < MORPH_MUTATION_RATE:
-			self.angle = random.gauss(self.angle,MUT_SIGMA)
+			self.angle = random.gauss(self.angle,MUT_SIGMA * math.pi)
 		self.limitWH()
 		if self.controller is not None:
 			self.controller.mutate(MUTATION_RATE,MUT_SIGMA, self.angle)
@@ -163,18 +162,6 @@ class Circular2D(abstract_module.Module):
 			"the joint in between to components")
 		n_radius = self.radius
 		angle = 0
-		#if p_c is not None:
-		#	parent_angle = p_c.angle
-		#if node is not None:
-		#	if node.module_ is not None:
-		#		n_radius = node.module_.radius
-				#angle = node.module.get_angle(con = node.parent_connection_coordinates)
-		#	else:
-		#		n_radius = module_list[node.type].radius
-				#angle = module_list[node.type].get_angle(con = node.parent_connection_coordinates)
-		#elif module is not None:
-		#	n_radius = module.radius
-			#angle = self.get_angle(0)
 
 		pos = [7,10,0];
 		if position is not None:
@@ -184,9 +171,7 @@ class Circular2D(abstract_module.Module):
 			local_pos_y =math.sin(connection_site.orientation.x+ math.pi/2) * n_radius 
 			pos[0] = (local_pos_x) + connection_site.position.x
 			pos[1] = (local_pos_y) + connection_site.position.y
-		#if connection_site is not None:
-			# We remove -math.pi/2 since we want the y vector to face in the correct direction
-		#	angle = connection_site.orientation.x -math.pi/2
+
 		# This module will create one component that will be temporarily stored in ncomponent
 		new_component = None
 		# This module will create one joint (if a parent component is present) that will be temporarily stored in njoint
@@ -227,41 +212,12 @@ class Circular2D(abstract_module.Module):
 			components.append(new_component)
 			if node is not None:
 				node.component = [new_component]
-			#if pos[1] < lowestY:
-			#	lowestY = pos[1]
-			if connection_site is not None:
-				joint = self.create_joint(world,p_c,new_component,connection_site)
-				joints.append(joint)
+
+		if connection_site is not None:
+			joint = mu.create_joint(world, p_c,new_component,connection_site, angle, self.torque)
+			joints.append(joint)
 			
-			#ncomponent.angle=connection_site.orientation.x*0.5
+
 		return components, joints
 
-	def create_joint(self,world, parent_component,new_component,connection_site,actuated =True):
-		# First the local coordinates are calculated based on the absolute coordinates and angles of the parent, child and connection site
-		
-		disA = math.sqrt(math.pow(connection_site.position.x - parent_component.position.x,2)+math.pow(connection_site.position.y - parent_component.position.y,2))
-		local_anchor_a = [connection_site.position.x- parent_component.position[0], connection_site.position.y - parent_component.position[1],0]
-		local_anchor_a[0] = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
-		local_anchor_a[1] = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
-		
-		disB = math.sqrt(math.pow(connection_site.position.x - new_component.position.x,2)+math.pow(connection_site.position.y - new_component.position.y,2))
-		local_anchor_b = [new_component.position[0]-connection_site.position.x, new_component.position[1] - connection_site.position.y,0]
-		local_anchor_b[0] = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
-		local_anchor_b[1] = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
-		
-		if (actuated == True):
-			rjd = revoluteJointDef(
-				bodyA=parent_component,
-				bodyB=new_component,
-				localAnchorA=(local_anchor_a[0],local_anchor_a[1]),
-				localAnchorB= (local_anchor_b[0],local_anchor_b[1]),# (connectionSite.a_b_pos.x,connectionSite.a_b_pos.y),# if (math.isclose(connectionSite.orientation.x,0.0)) else (connectionSite.a_b_pos.x,-connectionSite.a_b_pos.y),
-				enableMotor=actuated,
-				enableLimit=True,
-				maxMotorTorque=self.torque,
-				motorSpeed = 0.0,	
-				lowerAngle = -math.pi/2,
-				upperAngle = math.pi/2,
-				referenceAngle = connection_site.orientation.x - parent_component.angle #new_component.angle #connectionSite.orientation.x
-			)
-			joint = world.CreateJoint(rjd)
-			return joint;
+	

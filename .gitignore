@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+gym_rem2D2020.pyproj
+gym_rem2D2020.sln
+.vs/
+ModularER_2D/results/

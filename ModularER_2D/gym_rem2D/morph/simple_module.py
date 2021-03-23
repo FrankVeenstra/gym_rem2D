@@ -4,9 +4,8 @@
 Standard 2D module with single joint
 """
 
-#from gym_rem.morph.exception import ModuleAttached, ConnectionObstructed
-#from gym_rem.morph.module import Module
 
+import gym_rem2D.morph.module_utility as mu
 from gym_rem2D.morph import abstract_module
 from enum import Enum
 
@@ -79,7 +78,7 @@ class Standard2D(abstract_module.Module):
 		if random.uniform(0,1) < MORPH_MUTATION_RATE:
 			self.height = random.gauss(self.height,MUT_SIGMA)
 		if random.uniform(0,1) < MORPH_MUTATION_RATE:
-			self.angle = random.gauss(self.angle,MUT_SIGMA) * math.pi
+			self.angle = random.gauss(self.angle,MUT_SIGMA * math.pi) 
 		# function below ensures values are not out of bound
 		self.limitWH()
 		if self.controller:
@@ -238,8 +237,7 @@ class Standard2D(abstract_module.Module):
 		n_height = 0.5
 		n_width = 0.5
 		angle = 0
-		#if p_c is not None:
-		#	parent_angle = p_c.angle
+
 		if node is not None:
 			if node.module_ is not None:
 				n_height = node.module_.height
@@ -271,9 +269,8 @@ class Standard2D(abstract_module.Module):
 			if node is not None:
 				node.component = None
 			return components,joints
-		# if connection_site is not None:
-		# We remove -math.pi/2 since we want the y vector to face in the correct direction
-		#	angle = connection_site.orientation.x -math.pi/2
+
+
 		# This module will create one component that will be temporarily stored in ncomponent
 		new_component = None
 		# This module will create one joint (if a parent component is present) that will be temporarily stored in njoint
@@ -302,8 +299,7 @@ class Standard2D(abstract_module.Module):
 		color = (125,125,125)
 		if node is not None:
 			color = world.cmap(node.type/len(module_list))
-		#new_component.color1 = (int(color[0]*255),int(color[1]*255),int(color[2]*255))
-		#new_component.color2 = (int(color[0]*255),int(color[1]*255),int(color[2]*255))
+
 		new_component.color1 = (color[0],color[1],color[2])
 		new_component.color2 = (color[0],color[1],color[2])
 		#components.append(new_component)
@@ -311,37 +307,9 @@ class Standard2D(abstract_module.Module):
 		if node is not None:
 			node.component = [new_component]
 		if connection_site is not None:
-			joint = self.create_joint(world, p_c,new_component,connection_site)
+			joint = mu.create_joint(world, p_c,new_component,connection_site, angle, self.torque)
 			joints.append(joint)
 
 		return components,joints
 
-	def create_joint(self,world, parent_component,new_component,connection_site,actuated =True):
-		# First the local coordinates are calculated based on the absolute coordinates and angles of the parent, child and connection site
-		
-		disA = math.sqrt(math.pow(connection_site.position.x - parent_component.position.x,2)+math.pow(connection_site.position.y - parent_component.position.y,2))
-		local_anchor_a = [connection_site.position.x- parent_component.position[0], connection_site.position.y - parent_component.position[1],0]
-		local_anchor_a[0] = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
-		local_anchor_a[1] = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
-		
-		disB = math.sqrt(math.pow(connection_site.position.x - new_component.position.x,2)+math.pow(connection_site.position.y - new_component.position.y,2))
-		local_anchor_b = [new_component.position[0]-connection_site.position.x, new_component.position[1] - connection_site.position.y,0]
-		local_anchor_b[0] = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
-		local_anchor_b[1] = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
-		
-		if (actuated == True):
-			rjd = revoluteJointDef(
-				bodyA=parent_component,
-				bodyB=new_component,
-				localAnchorA=(local_anchor_a[0],local_anchor_a[1]),
-				localAnchorB= (local_anchor_b[0],local_anchor_b[1]),# (connectionSite.a_b_pos.x,connectionSite.a_b_pos.y),# if (math.isclose(connectionSite.orientation.x,0.0)) else (connectionSite.a_b_pos.x,-connectionSite.a_b_pos.y),
-				enableMotor=actuated,
-				enableLimit=True,
-				maxMotorTorque=self.torque,
-				motorSpeed = 0.0,	
-				lowerAngle = -math.pi/2,
-				upperAngle = math.pi/2,
-				referenceAngle = connection_site.orientation.x - parent_component.angle #new_component.angle #connectionSite.orientation.x
-			)
-			joint = world.CreateJoint(rjd)
-			return joint;
+	

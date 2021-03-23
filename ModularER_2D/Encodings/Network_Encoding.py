@@ -7,10 +7,10 @@ import numpy as np
 import copy
 import random
 
-from Encodings import Abstract_Encoding as enc
+from Encodings import abstract_encoding as enc
 import Tree as tree_structure
 from NeuralNetwork import NEAT_NN
-from Encodings import Cellular_Encoding
+from Encodings import cellular_encoding
 from enum import Enum
 
 MAX_MODULES = 20
@@ -75,9 +75,9 @@ class NN_enc(enc.Encoding):
 		elif(type is "CE"):
 			self.networkType = NETWORK_TYPE.CE
 			if config is not None:
-				self.nn_g = Cellular_Encoding.CE(config = config)
+				self.nn_g = cellular_encoding.CE(config = config)
 			else:
-				self.nn_g = Cellular_Encoding.CE()
+				self.nn_g = cellular_encoding.CE()
 			self.nn_g.mutate(0.5,0.5,0.5)
 			self.nn_g.create()
 		for mod in self.moduleList:

@@ -1,4 +1,4 @@
-from Encodings import Abstract_Encoding as enc
+from Encodings import abstract_encoding as enc
 import Tree
 from Controller import m_controller
 import copy

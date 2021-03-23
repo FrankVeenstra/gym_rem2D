@@ -27,10 +27,10 @@ import gym_rem2D
 # The two module types are imported to this file so that all can tweak some
 
 # Encodings:
-from Encodings import LSystem as ls
-from Encodings import Network_Encoding as nn
-from Encodings import Direct_Encoding as de
-from Encodings import Cellular_Encoding as ce
+from Encodings import lsystem as ls
+from Encodings import network_encoding as nn
+from Encodings import direct_encoding as de
+from Encodings import cellular_encoding as ce
 import Tree as tree_morph # An encoding creates a tree, a tree creates a robot
 
 # plotting
@@ -51,7 +51,7 @@ from termcolor import colored, cprint
 # removed, contained hacky scripts. 
 import DataAnalysis as da
 
-from Experiments import ConfigurationMaker
+from Experiments import configuration_maker
 
 # singleton equivalent
 env = None
@@ -67,13 +67,13 @@ def getEnv():
 	return env
 
 def get_module_list():
-	from gym_rem2D.morph import SimpleModule
-	from gym_rem2D.morph import CircularModule2D
+	from gym_rem2D.morph import simple_module
+	from gym_rem2D.morph import circular_module
 	module_list = []
 	for i in range(4):
-		module_list.append(SimpleModule.Standard2D())
+		module_list.append(simple_module.Standard2D())
 	for i in range(4):
-		module_list.append(CircularModule2D.Circular2D())
+		module_list.append(circular_module.Circular2D())
 	return module_list
 
 class Encoding_Type(Enum):
@@ -107,6 +107,8 @@ class Individual:
 			elif enc == 'ce':
 				self.ENCODING_TYPE = Encoding_Type.CELLULAR_ENCODING
 				self.genome = nn.NN_enc(moduleList, "CE",config=config)
+			else:
+				raise Exception("Could not find specified encoding type, please use 'direct','lsystem','cppn' or 'ce'")
 			self.tree_depth = int(config['morphology']['max_depth'])
 			tree = self.genome.create(self.tree_depth)
 			self.fitness = 0
@@ -124,6 +126,8 @@ class Individual:
 			elif encoding == 'ce':
 				self.ENCODING_TYPE = Encoding_Type.CELLULAR_ENCODING
 				self.genome = nn.NN_enc(moduleList, "CE")
+			else:
+				raise Exception("Could not find specified encoding type, please use 'direct','lsystem','cppn' or 'ce'")
 			self.tree_depth = 8
 			self.genome.create(self.tree_depth)
 			return self
@@ -408,8 +412,8 @@ def setup(directory = None):
 	print('reading: ', config_to_read)
 	if not os.path.isfile(config_to_read):
 		print("Could not find configuration file, running configuration maker instead")
-		config = ConfigurationMaker.create(dir=newdir)
-		ConfigurationMaker.save_config(config)
+		config = configuration_maker.create(dir=newdir)
+		configuration_maker.save_config(config)
 	else:
 		config.read(config_to_read)
 

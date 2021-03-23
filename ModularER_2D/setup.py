@@ -8,5 +8,5 @@ setup(name='Modular_robtics_2D',
       author="Frank Veenstra and Joergen Nordmoen",
       author_email="frankvee@uio.no",
       include_package_data=True,
-      install_requires=['gym>=0.15', 'pybullet>=2.5', 'numpy>=1.17'],
+      install_requires=['gym>=0.17', 'pybullet>=2.5', 'numpy>=1.17'],
       test_suite='tests')
