@@ -15,13 +15,8 @@ See [`our paper`](https://www.mitpressjournals.org/doi/abs/10.1162/isal_a_00295)
     pages = {592-601},
     year = {2020},
     doi = {10.1162/isal\_a\_00295},
-    URL = { 
-        https://www.mitpressjournals.org/doi/abs/10.1162/isal_a_00295
-    
-    },
-    eprint = { 
-        https://www.mitpressjournals.org/doi/pdf/10.1162/isal_a_00295
-    }
+    URL = { https://www.mitpressjournals.org/doi/abs/10.1162/isal_a_00295 },
+    eprint = { https://www.mitpressjournals.org/doi/pdf/10.1162/isal_a_00295 }
     }
 
 A similar 3D modular environment that uses a direct encoding can be found [`here`](https://github.uio.no/jorgehn/gym-rem). We are working on a framework that allows us to use the same encodings to evolve both 2D and 3D modular robots. Stay tuned. 
@@ -46,7 +41,5 @@ if __name__=="__main__":
         individual = r2d.Individual.random(encoding = 'lsystem') # options: direct, cppn, ce, lsystem
         evaluate(individual, headless = False, controller = None)
 ```
-
-
 
 Please don't hesitate to contact me if you'd like some explanation or have a suggestion.
