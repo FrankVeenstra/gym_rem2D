@@ -78,7 +78,8 @@ class DirectEncoding(enc.Encoding):
 		return count 
 
 	# recursive function
-	def mutateNode(self, node, morphMutationRate,mutationRate,sigma, depth):
+	def mutateNode(self, node_o, morphMutationRate,mutationRate,sigma, depth):
+		node = node_o
 		self.countModules()
 		# iterate through all connected modules
 		for mod in node.children:

@@ -37,9 +37,8 @@ def evaluate(individual, evaluation_steps= 10000, headless=True, render_interval
 
 
 if __name__=="__main__":
-	# how many random individual to create
 	n_iterations = 200 
 	for i in range(n_iterations):
-		individual = r2d.Individual.random(encoding = 'lsystem') # options: direct, cppn, ce, lsystem
+		individual = r2d.Individual.random(encoding = 'direct') # options: direct, cppn, ce, lsystem
 		evaluate(individual, headless = False, controller = None)
 	
