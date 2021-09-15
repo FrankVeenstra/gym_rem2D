@@ -8,7 +8,11 @@ kiwisolver==1.3.1
 matplotlib==3.3.4
 neat-python==0.92
 numpy==1.20.1
+<<<<<<< HEAD
 Pillow==8.2.0
+=======
+Pillow==8.3.2
+>>>>>>> origin/dependabot/pip/pillow-8.3.2
 pip==21.0.1
 pyglet==1.5.0
 pyparsing==2.4.7
