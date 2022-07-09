@@ -44,3 +44,5 @@ class Encoding(object):
 		The parameters that create the tree are mutated
 		"""
 		raise NotImplementedError("Not supported")
+	def get_expressed_tree(self):
+		return self.expressed_tree

@@ -22,6 +22,10 @@ def load_best():
 	#dir = 'D:/results/cppn_final/'
 	for i in range(500):
 		filename = dir + "result_" + str(runid)+"/s_elite"+str(id)
+		#filename = "results/cppn_final/result_"+str(runid)+"/s_elite"+str(id)
+		#filename = "C:/result_temp_final/result_"+str(runid)+"/s_elite"+str(id)
+		
+		#filename = "resultss_elite"+str(id)
 		try :
 			individual = pickle.load(open(filename,"rb"))
 			originalfit = individual.fitness

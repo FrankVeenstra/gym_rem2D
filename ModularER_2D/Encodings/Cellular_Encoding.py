@@ -8,13 +8,15 @@ from enum import Enum
 from NeuralNetwork import activations as act
 #import pygame
 
+
+
 ACTIVATION_FUNCTIONS_SET = act.ActivationFunctionSet()
 #TODO move variables below, hard coded for now
 n_iterations = 10;
 c_iteration = 0;
 n_schemes = 10;
-useMaxCells = True;
-maxCells = 50;
+LIMIT_TO_MAX_CELLS = True;
+MAX_CELLS = 50;
 width = 1000
 height = 1000
 
@@ -89,13 +91,7 @@ class Cell:
 		accumulatedOutput = 0.0
 		for out in self.output_links:
 			output = 0.0
-			#if (self.activity > self.threshold):
-			#output = np.sin(self.activity*out.weight)
 			output = self.activationFunction(self.activity*out.weight)
-			#if (self.type > 10):
-			#	output = np.sin(self.activity*out.weight)
-			#if (self.type > 15):
-			#	output = -(self.activity*out.weight)
 			accumulatedOutput += output
 		return accumulatedOutput
 
@@ -235,7 +231,6 @@ class CE:
 			out_cell.activity += output
 
 		output = []
-
 		n_layers = -1
 		for cell in self.cells:
 			if cell.layer >= n_layers:
@@ -256,15 +251,23 @@ class CE:
 								if link.c_index == cell.index:
 									#print(cell.activity,out)
 									cell.activity += out
+						#if cell.output_pointers[0].c_pointer == self.outputCell:
+						#print(out)
+						#if out != 0:
+						#	output.append(out)
+						#if (out == 0.0):
+		#print(inputs)
+		#print(output)
 		return output
 
 	def iterate(self,iterationNumber):
+		# stops iterating when the maximum number of cells (maxCells) is reached
 		n_cells = len(self.cells)
 		for i in range(n_cells):
 			cell = self.cells[i]
-			if (useMaxCells):
-				if len(self.cells) > maxCells:
-					return
+			if LIMIT_TO_MAX_CELLS and len(self.cells) > MAX_CELLS:
+				#print("created network from cellular encoding")
+				return
 
 			if cell.type != -1:
 				# not a leaf node
@@ -278,6 +281,7 @@ class CE:
 				else:
 					if s.type == 0:
 						# sequential division
+						# print("sequential")
 						p_c1 = [cell.pos[0],cell.pos[1] - (dis/np.sqrt(iterationNumber))]
 						p_c2 = [cell.pos[0],cell.pos[1] + (dis/np.sqrt(iterationNumber))]
 						c1 = cell
@@ -298,6 +302,7 @@ class CE:
 						self.cells.append(c2)
 					elif s.type == 1:
 						# parallel division
+						# print("parallel")
 						p_c1 = [cell.pos[0] - (dis/np.sqrt(iterationNumber)), cell.pos[1]]
 						p_c2 = [cell.pos[0] + (dis/np.sqrt(iterationNumber)), cell.pos[1]]
 						c1 = cell
@@ -400,12 +405,10 @@ if __name__ == "__main__":
 		ce.mutate(0.1,0.8)
 		ax.clear()
 		ce.reset()
-		# test updates
-		#print(".")
 		for j in range(1):
 			inputs = []
-			for i in range(10):
-				  inputs.append(random.uniform(0,1))
+			for k in range(10):
+				inputs.append(random.uniform(0,1))
 			output = ce.update(inputs)
 			ce.display(ax)
 		

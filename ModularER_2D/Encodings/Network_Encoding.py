@@ -7,10 +7,10 @@ import numpy as np
 import copy
 import random
 
-from Encodings import abstract_encoding as enc
+from Encodings import Abstract_Encoding as enc
 import Tree as tree_structure
 from NeuralNetwork import NEAT_NN
-from Encodings import cellular_encoding
+from Encodings import Cellular_Encoding
 from enum import Enum
 
 MAX_MODULES = 20
@@ -75,9 +75,9 @@ class NN_enc(enc.Encoding):
 		elif(type is "CE"):
 			self.networkType = NETWORK_TYPE.CE
 			if config is not None:
-				self.nn_g = cellular_encoding.CE(config = config)
+				self.nn_g = Cellular_Encoding.CE(config = config)
 			else:
-				self.nn_g = cellular_encoding.CE()
+				self.nn_g = Cellular_Encoding.CE()
 			self.nn_g.mutate(0.5,0.5,0.5)
 			self.nn_g.create()
 		for mod in self.moduleList:
@@ -97,14 +97,19 @@ class NN_enc(enc.Encoding):
 			input.append(float(1)-(float(2)*(float(depth)/float(self.maxTreeDepth)))) # x coordinate is the tree depth normalized to a value between 0 and 1 
 			input.append(float(1)-(float(2)*(float(par_symb.moduleRef+1)/float(len(self.moduleList))))) # module type 
 			input.append(con.value[0]) # -1.0,0.0,1.0
+			#input.append(float(1)-(float(2)*(float(i)/float(len(par_symb.availableConnections))))) #
+			#input.append(float(1)-(float(index)/float(self.maxModules)*2))
 
 			output = []
+			#for j in range(10-len(input)):
+			#	input.append(0)
 			if (self.networkType == NETWORK_TYPE.CPPN):
 				output = self.nn_p.activate(input)
 			elif (self.networkType == NETWORK_TYPE.CE):
 				output = self.nn_p.update(input,requested_number_of_outputs=9)
 			else:
 				raise Exception("Cannot update network, no network type found")
+			# print(np.max(output))
 			# outputs of the network are 0: module, 1: module type, 2,3: module size
 			if output[0] > 0.5:
 				newCon.append(con)
@@ -121,6 +126,7 @@ class NN_enc(enc.Encoding):
 				elif(connectedMNr < 0):
 					#raise("Trying to get a reference a module beyond the moduleList given to the network. Make sure the output value is between 0 and len(moduleList)-1")
 					connectedMNr = 0
+				#print(output[i], connectedMNr)
 				connectedModule = C_Module(index, self.moduleList[connectedMNr],connectedMNr)
 				connectedModule.module.setMorph(output[2],output[3],output[4])
 				#theta = (output[4]*3)-1 

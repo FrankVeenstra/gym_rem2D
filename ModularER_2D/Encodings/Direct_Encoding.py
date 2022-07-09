@@ -1,4 +1,4 @@
-from Encodings import abstract_encoding as enc
+from Encodings import Abstract_Encoding as enc
 import Tree
 from Controller import m_controller
 import copy
@@ -39,7 +39,7 @@ class DirectNode(Tree.Node):
 		self.children.append(DirectNode(index,parent,moduleRef,parentConnectionSite,moduleController,module))
 		self.availableConnections.remove(parentConnectionSite)
 		return index
-
+		
 class DirectEncoding(enc.Encoding):
 	def __init__(self,moduleList,config=None):
 		# This list contains the modules to choose from. Needs to be deep-copied when used
@@ -47,6 +47,8 @@ class DirectEncoding(enc.Encoding):
 		self.moduleList = moduleList
 		# Direct tree contains a little bit more information to ease mutations
 		self.tree = DirectTree(moduleList)
+		# List used to keep track of expressed nodes, to differentiate between tree and phenotype
+		self.expressed_nodes = {}
 
 		self.n_modules = 1
 		if config is not None:
@@ -99,6 +101,9 @@ class DirectEncoding(enc.Encoding):
 				self.mutateNode(mod, morphMutationRate,mutationRate,sigma,d)
 		for con in node.availableConnections:
 			self.countModules()
+			#print(len(node.availableConnections))
+			#print("nr: ", self.n_modules)
+			#print("index: ", self.tree.index)
 			if (self.n_modules < self.maxModules and depth < self.maxDepth and random.uniform(0,1)< morphMutationRate/float(self.n_modules)):
 				# add module at connection site
 				type = random.randint(0,len(self.moduleList)-1)

@@ -5,13 +5,17 @@ import random
 import copy
 import numpy as np
 
+# import matplotlib.pyplot as plt
 # printing tree structures and activation levels -> should go to phenotype like file
 # TODO global variable for collision environment
-from Encodings import abstract_encoding as enc
+from Encodings import Abstract_Encoding as enc
 import Tree as tree_structure
+#from Modules import SimpleModule as sm
 
 # two options, overwrite previous or append previous
-context_sensitive = False # double check if this is the right term for it
+context_sensitive = False # double check if this is the good name for it
+
+
 
 """
 Container Module : This is used to store arbitrary information of the module 
@@ -66,6 +70,8 @@ class Rule:
 			self.module.availableConnections.remove(con)
 			connectedModule.parentConnectionSite = con
 			self.module.children.append(connectedModule)
+		#for mod in moduleList:	
+		#	mod.mutate(0.5,0.5,0.5)
 
 	def mutate(self, MORPH_MUTATIONRATE,MUTATION_RATE,MUT_SIGMA):
 		self.moduleList[self.moduleRef].mutate(MORPH_MUTATIONRATE,MUTATION_RATE,MUT_SIGMA)
@@ -129,6 +135,8 @@ class LSystem(enc.Encoding):
 	def __init__(self, moduleList, config=None):
 		# moduleTypes is a list that contains module objects. The first module is the axiom
 		self.moduleList = moduleList
+		# List used to keep track of expressed nodes, to differentiate between tree and phenotype
+		self.expressed_nodes = {}
 		# every module type gets its own rule (or scheme)
 		self.rules = []
 		if (config is not None):
@@ -161,16 +169,20 @@ class LSystem(enc.Encoding):
 		axiom.children = []
 		axiom.index = index
 		base = axiom
-		# In this L-System the string is a list of container objects
+		# this is a parameterized L-System and the term string refers to a classical L-System, 
+		# it's not a string, but a list of container objects
 		for i in range(self.treeDepth): # number of times iterated over the L-System
 			index = self.iterate(base, index,0)  
-		
+		#print(axiom)
+
 		# create tree
 		# transform the string into a usable tree structure
 		tree = tree_structure.Tree(self.moduleList)
 		self.recursiveNodeGen(-1,base,tree,0)
+		#print("number of nodes is : ",len(tree.nodes))
 		return tree
-	
+		#return super().create()
+
 	def mutate(self, MORPH_MUTATIONRATE,MUTATION_RATE,MUT_SIGMA):
 		# mutate modules
 		for m in self.moduleList:
@@ -208,7 +220,7 @@ class LSystem(enc.Encoding):
 			self.rules.append(Rule(i,m))
 			self.rules[i].init()
 	
-	# not used now TODO
+	# not used no TODO
 	def getProduct(self, symbol):
 		return self.rules[symbol].update()
 		

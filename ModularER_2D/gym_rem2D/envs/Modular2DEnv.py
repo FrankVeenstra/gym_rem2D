@@ -1,5 +1,6 @@
 import sys
 import math
+from typing import Dict
 
 import numpy as np
 import Box2D
@@ -17,11 +18,34 @@ import os
 
 ASSET_PATH = os.path.join(os.path.dirname(__file__), "../../assets")
 
-# Adjusted from Oleg Klimov's Bipedal walker environment. Licensed on the same terms as the rest of OpenAI Gym.
+# This is simple 4-joints walker robot environment.
 #
+# There are two versions:
+#
+# - Normal, with slightly uneven terrain.
+#
+# - Hardcore with ladders, stumps, pitfalls.
+#
+# Reward is given for moving forward, total 300+ points up to the far end. If the robot falls,
+# it gets -100. Applying motor torque costs a small amount of points, more optimal agent
+# will get better score.
+#
+# Heuristic is provided for testing, it's also useful to get demonstrations to
+# learn from. To run heuristic:
+#
+# python gym/envs/box2d/bipedal_walker.py
+#
+# State consists of hull angle speed, angular velocity, horizontal speed, vertical speed,
+# position of joints and joints angular speed, legs contact with ground, and 10 lidar
+# rangefinder measurements to help to deal with the hardcore version. There's no coordinates
+# in the state vector. Lidar is less useful in normal version, but it works.
+#
+# To solve the game you need to get 300 points in 1600 time steps.
+#
+# To solve hardcore version you need 300 points in 2000 time steps.
+#
+# Created by Oleg Klimov. Licensed on the same terms as the rest of OpenAI Gym.
 # Adjusted by Frank Veenstra and Joergen Jorgensen. Licensed on the same terms as the rest of OpenAI Gym.
-#
-# Note: this file is still filled with hacks
 
 FPS    = 50
 SCALE  = 30.0   # affects how fast-paced the game is, forces should be adjusted as well
@@ -51,6 +75,7 @@ DISPLAY_JOINTS = False
 DISPLAY_VECTORS = False
 WOD_SPEED = 0.04
 
+JET_FORCE = 10.
 VIEWPORT_W = 800
 VIEWPORT_H = 600
 
@@ -65,6 +90,36 @@ COLLISIONALLOWED = True # TODO
 
 VERBOSE = False
 
+HULL_FD = fixtureDef(
+				shape=polygonShape(vertices=[ (x/SCALE,y/SCALE) for x,y in HULL_POLY ]),
+				density=5.0,
+				friction=0.1,
+				categoryBits=0x0020,
+				maskBits=0x001,  # collide only with ground
+				restitution=0.0) # 0.99 bouncy
+
+LEG_FD = fixtureDef(
+					shape=polygonShape(box=(LEG_W/2, LEG_H/2)),
+					density=1.0,
+					restitution=0.0,
+					categoryBits=0x0020,
+					maskBits=0x001)
+
+LOWER_FD = fixtureDef(
+					shape=polygonShape(box=(0.8*LEG_W/2, LEG_H/2)),
+					density=1.0,
+					restitution=0.0,
+					categoryBits=0x0020,
+					maskBits=0x001)
+
+MODULAR_FD = fixtureDef(
+					shape=polygonShape(box=(MODULE_R, MODULE_R)),
+					density=1.0,
+					friction=0.1,
+					restitution=0.0,
+					categoryBits=0x0020,
+					maskBits=0x001
+					)
 
 class ModularRobotBox2D:
 	"""
@@ -82,7 +137,24 @@ class ModularRobotBox2D:
 		return self
 
 
+class JetParticles:
+	def __init__(self):
+		self.depth = 15
+		self.interval = 10
+		self.number = 0
+		# particles will become a two dimensional array with vector2 for each separate particle
+		self.particles = []
+	def update(self, particles):
+		self.number+=1
+		if (self.number % self.interval == 0):
+			self.particles.append(particles)
+			if (len(self.particles) > self.depth):
+				self.particles.remove(self.particles[0])
+
 class Vector3:
+	"""
+	This instance just helped me out wrapping my mind around Box2D and its construction process 
+	"""
 	def __init__(self,x=None,y=None,z=None):
 		self.x = x
 		self.y = y
@@ -108,6 +180,9 @@ class WallOfDeath:
 		self.position += self.speed
 		#self.speed = self.speed + 0.00001
 		
+
+
+jet_particles = JetParticles()
 
 class ContactDetector(contactListener):
 	def __init__(self, env):
@@ -138,7 +213,7 @@ class Modular2D(gym.Env, EzPickle):
 		self.seed(random_seed)
 		self.viewer = None
 		self.tree_morphology = None
-		self.scroll = 0 # 12-VIEWPORT_W/SCALE/5
+		self.scroll = 0#12-VIEWPORT_W/SCALE/5
 		self.scroll_y = 0
 		self.robot = None
 		self.world = Box2D.b2World()
@@ -390,18 +465,19 @@ class Modular2D(gym.Env, EzPickle):
 		)
 		self.joints.append(self.world.CreateJoint(rjd))
 
+
 	def create_joint(self,parent_component,new_component,connection_site,actuated =True):
 		# First the local coordinates are calculated based on the absolute coordinates and angles of the parent, child and connection site
 		
 		disA = math.sqrt(math.pow(connection_site.position.x - parent_component.position.x,2)+math.pow(connection_site.position.y - parent_component.position.y,2))
 		local_anchor_a = Vector3(connection_site.position.x- parent_component.position.x, connection_site.position.y - parent_component.position.y,0)
-		local_anchor_a.x = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA
-		local_anchor_a.y = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA
+		local_anchor_a.x = math.cos(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
+		local_anchor_a.y = math.sin(connection_site.orientation.x-parent_component.angle+math.pi/2)*disA;
 		
 		disB = math.sqrt(math.pow(connection_site.position.x - new_component.position.x,2)+math.pow(connection_site.position.y - new_component.position.y,2))
 		local_anchor_b = Vector3(new_component.position.x-connection_site.position.x, new_component.position.y - connection_site.position.y,0)
-		local_anchor_b.x = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB
-		local_anchor_b.y = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB
+		local_anchor_b.x = math.cos(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
+		local_anchor_b.y = math.sin(new_component.angle-connection_site.orientation.x - math.pi/2)*disB;
 		
 		if (actuated == True):
 			rjd = revoluteJointDef(
@@ -420,7 +496,197 @@ class Modular2D(gym.Env, EzPickle):
 			joint = self.world.CreateJoint(rjd)
 			return joint;
 			return rjd
-		return	
+		return
+		# backup
+		# TODO joint has no local coordinate system
+		if (actuated == True):
+			rjd = revoluteJointDef(
+				bodyA=p_c,
+				bodyB=ncomponent,
+				localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
+				localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
+				enableMotor=True,
+				enableLimit=True,
+				maxMotorTorque=MOTORS_TORQUE,
+				motorSpeed = 0,	
+				lowerAngle = -math.pi/2,
+				upperAngle = math.pi/2,
+				referenceAngle = 0
+			)
+			return rjd
+		else:
+			rjd = revoluteJointDef(
+				bodyA=p_c,
+				bodyB=ncomponent,
+				localAnchorA=(jointPosition[0]/2, jointPosition[1]/2),
+				localAnchorB=(-jointPosition[0]/2, -jointPosition[1]/2),
+				enableMotor=False,
+				enableLimit=False,
+				referenceAngle = 0
+			)
+			return rjd
+		return rjd
+
+	def create_circle_module(self,module=None,node=None,connection_site=None, p_c=None, module_list=None):
+		# get module height and width
+		if p_c is not None and connection_site is None:
+			raise("When you want to attach a new component to a parent component, you have to supply",
+			"a connection_site object with it. This connection_site object defines where to anchor",
+			"the joint in between to components")
+		n_radius = 0.5
+		angle = 0
+		#if p_c is not None:
+		#	parent_angle = p_c.angle
+		if node is not None:
+			if node.module_ is not None:
+				n_radius = node.module_.radius
+				#angle = node.module.get_angle(con = node.parent_connection_coordinates)
+			else:
+				n_radius = module_list[node.type].radius
+				#angle = module_list[node.type].get_angle(con = node.parent_connection_coordinates)
+		elif module is not None:
+			n_radius = module.radius
+			#angle = module.get_angle(0)
+
+		pos = Vector3(2,7,0);
+		if (p_c is not None):
+			local_pos_x =math.cos(connection_site.orientation.x+ math.pi/2) * n_radius 
+			local_pos_y =math.sin(connection_site.orientation.x+ math.pi/2) * n_radius 
+			pos.x = (local_pos_x) + connection_site.position.x
+			pos.y = (local_pos_y) + connection_site.position.y
+		#if connection_site is not None:
+			# We remove -math.pi/2 since we want the y vector to face in the correct direction
+		#	angle = connection_site.orientation.x -math.pi/2
+		# This module will create one component that will be temporarily stored in ncomponent
+		new_component = None
+		# This module will create one joint (if a parent component is present) that will be temporarily stored in njoint
+		njoint = None
+		
+		components = []
+		joints = []
+
+		if (pos.y - n_radius < TERRAIN_HEIGHT):
+			if node is not None:
+				node.component = None
+			return components,joints
+		else:
+			fixture = fixtureDef(
+					shape=Box2D.b2CircleShape(radius =n_radius),
+					density=1.0,
+					friction=0.1,
+					restitution=0.0,
+					categoryBits=0x0020,
+					maskBits=0x001
+				)
+			new_component = self.world.CreateDynamicBody(
+				position=(pos.x,pos.y),
+				angle = angle,
+				fixtures = fixture)
+
+			color = [255,255,255]
+			if node is not None and module_list is not None:
+				color = self.cmap(node.type/len(module_list))
+			elif node is not None and module_list is None:
+				print("Note: cannot assign a color to the module since the 'module_list' is not passed as an argument")
+			# move to component creator
+			new_component.color1 = (color[0],color[1],color[2])
+			new_component.color2 = (color[0],color[1],color[2])
+			components.append(new_component)
+			if node is not None:
+				node.component = [new_component]
+			#if pos[1] < lowestY:
+			#	lowestY = pos[1]
+			if connection_site is not None:
+				joint = self.create_joint(p_c,new_component,connection_site)
+				joints.append(joint)
+			
+			#ncomponent.angle=connection_site.orientation.x*0.5
+
+		return components, joints
+		
+	def create_simple_module(self,module=None,node=None,connection_site=None, p_c=None, module_list = None):
+		if p_c is not None and connection_site is None:
+			raise("When you want to attach a new component to a parent component, you have to supply",
+			"a connection_site object with it. This connection_site object defines where to anchor",
+			"the joint in between to components")
+
+		n_height = 0.5
+		n_width = 0.5
+		angle = 0
+		#if p_c is not None:
+		#	parent_angle = p_c.angle
+		if node is not None:
+			if node.module_ is not None:
+				n_height = node.module_.height
+				n_width = node.module_.width
+				angle = node.module_.get_angle(con = node.parent_connection_coordinates)
+			else:
+				n_height = module_list[node.type].height
+				n_width = module_list[node.type].width
+				angle = module_list[node.type].get_angle(con = node.parent_connection_coordinates)
+		elif module is not None:
+			n_height = module.height
+			n_width = module.width
+			angle = module.get_angle(0)
+		
+		pos = Vector3(7,7,0)
+		if (p_c is not None):
+			# The local position should be based on how much the module is rotated from the connection site. 
+			# - math.pi to compensate for y directionality of the angle (TODO: should be removed)
+			local_pos_x =math.cos(connection_site.orientation.x + angle + math.pi/2) * n_height/2
+			local_pos_y =math.sin(connection_site.orientation.x + angle + math.pi/2) * n_height/2
+			pos.x = (local_pos_x) + connection_site.position.x
+			pos.y = (local_pos_y) + connection_site.position.y
+		components = []
+		joints = []
+		# below is a quick hack formula. Should check based on lowest point in space. 
+		if (pos.y - math.sqrt(math.pow(n_width,2) + math.pow(n_height,2)) < TERRAIN_HEIGHT):
+			if node is not None:
+				node.component = None
+			return components,joints
+		# if connection_site is not None:
+		# We remove -math.pi/2 since we want the y vector to face in the correct direction
+		#	angle = connection_site.orientation.x -math.pi/2
+		# This module will create one component that will be temporarily stored in ncomponent
+		new_component = None
+		# This module will create one joint (if a parent component is present) that will be temporarily stored in njoint
+		njoint = None				
+		# get parent node
+		par = None	
+
+		if connection_site:
+			angle += connection_site.orientation.x
+				
+		fixture = fixtureDef(
+				shape=polygonShape(box=(n_width/2, n_height/2)),
+				density=1.0,
+				friction=0.1,
+				restitution=0.0,
+				categoryBits=0x0020,
+				maskBits=0x001
+			)
+
+		new_component = self.world.CreateDynamicBody(
+			position=(pos.x,pos.y),
+			angle = angle ,
+			fixtures = fixture)
+		color = (125,125,125)
+		if node is not None:
+			color = self.cmap(node.type/len(module_list))
+		#new_component.color1 = (int(color[0]*255),int(color[1]*255),int(color[2]*255))
+		#new_component.color2 = (int(color[0]*255),int(color[1]*255),int(color[2]*255))
+		new_component.color1 = (color[0],color[1],color[2])
+		new_component.color2 = (color[0],color[1],color[2])
+		#components.append(new_component)
+		components.append(new_component)
+		if node is not None:
+			node.component = [new_component]
+		if connection_site is not None:
+			joint = self.create_joint(p_c,new_component,connection_site)
+			joints.append(joint)
+
+		return components,joints
+
 
 	def create_component(self, module = None, node=None, nodes=None, parent_component=None, module_list=None, connection_site = None):
 		"""Should create a component of the robot knowing the parent component
@@ -446,58 +712,14 @@ class Modular2D(gym.Env, EzPickle):
 			#type = module.type
 			#if type == "CIRCLE":
 			#	components,joints = create_circle_module(module = module)
-		if node.module_ is None:
-			reference_module = module_list[node.type]
-			components,joints = module_list[node.type].create(self.world,TERRAIN_HEIGHT,node=node,p_c = parent_component,module_list = module_list, connection_site=connection_site, position=position)
+		
+		components,joints = node.module_.create(self.world,TERRAIN_HEIGHT,node=node,p_c = parent_component,module_list = module_list, connection_site=connection_site, position = position)
+		if components is None:
+			node.expressed = False
+		else:	
 			node.expressed = True
-			return components,joints
-			if	reference_module.type == "CIRCLE":
-				components, joints = self.create_circle_module(node=node,p_c=parent_component,module_list=module_list,connection_site = connection_site)
-				if len(components)>0:
-					node.position = Vector3(components[0].position[0],components[0].position[1],0, position = position)
-					node.angle = components[0].angle # TODO
-					#if connection_site is not None:
-						#node.angle += connection_site.orientation.x
-					node.expressed = True
-				return(components, joints)
-			elif reference_module.type == "SIMPLE":
-				components, joints = self.create_simple_module(node=node,p_c=parent_component,module_list=module_list,connection_site = connection_site)
-				if len(components)>0:
-					node.position = Vector3(components[0].position[0],components[0].position[1],0)
-					node.angle = components[0].angle # TODO
-					node.expressed = True
-				return(components, joints)
-			else:
-				raise("Module type not found")
-		else:
-			components,joints = node.module_.create(self.world,TERRAIN_HEIGHT,node=node,p_c = parent_component,module_list = module_list, connection_site=connection_site, position = position)
-			node.expressed = True
-			return components,joints
-
-			if	node.module_.type == "CIRCLE":
-				components, joints = self.create_circle_module(node=node,p_c=parent_component,module_list=module_list,connection_site = connection_site)
-				if len(components)>0:
-					node.position = Vector3(components[0].position[0],components[0].position[1],0)
-					node.angle = components[0].angle # TODO
-					#if connection_site is not None:
-						#node.angle += connection_site.orientation.x
-					node.expressed = True
-				return(components, joints)
-			elif node.module_.type == "SIMPLE":
-				components, joints = self.create_simple_module(node=node,p_c=parent_component,module_list=module_list,connection_site = connection_site)
-				if len(components)>0:
-					node.position = Vector3(components[0].position[0],components[0].position[1],0)
-					node.angle = components[0].angle # TODO
-					node.expressed = True
-				return(components, joints)
-			else:
-				raise("Module type not found")
-		if node.module_.type == "CIRCLE":
-			return(self.create_circle_module(node,nodes, parent_component,module_list))
-		elif node.module_.type == "SIMPLE":
-			return(self.create_simple_module(node,nodes, parent_component,module_list))
-		elif node.module_.type == "EMERGE":
-			return(self.createEmergeModule(node,nodes, parent_component,module_list))
+		return components,joints
+			
 
 	def get_connection_site(self, parent,node,module_list):
 		con = node.parent_connection_coordinates
@@ -514,6 +736,8 @@ class Modular2D(gym.Env, EzPickle):
 			global_angle = Vector3(local_angle+parent.angle,0,0)
 			return ConnectionSite(global_position,global_angle)
 
+
+	
 	def create_robot(self,nodes,module_list):
 		# Instance to store robot components created from nodes
 		self.robot = ModularRobotBox2D()
@@ -561,12 +785,10 @@ class Modular2D(gym.Env, EzPickle):
 					# parent found but not expressed
 					pass
 		return
-	
 	def reset(self, tree=None, module_list=None):
 		self.wod = WallOfDeath(WOD_SPEED)
 		self.wod.position = 0.0
 		self.tree_morphology = copy.deepcopy(tree)
-
 		self._destroy()
 		# Creating the world since not all objects were properly deleted. TODO need to debug this
 		self.world = Box2D.b2World()
@@ -595,7 +817,28 @@ class Modular2D(gym.Env, EzPickle):
 			self.drawlist = self.terrain + self.robot.components + self.robot.joints
 		else:
 			self.drawlist = self.terrain
-		return
+		#
+		self.bounding_box = []
+		min_x = 10000
+		max_x = 0
+		min_y = 10000
+		max_y = 0
+		for c in self.robot.components:
+			if (c.worldCenter.x < min_x):
+				min_x = c.worldCenter.x
+			elif (c.worldCenter.x > max_x):
+				max_x = c.worldCenter.x
+			if (c.worldCenter.y < min_y):
+				min_y = c.worldCenter.y
+			elif (c.worldCenter.y > max_y):
+				max_y = c.worldCenter.y
+		self.bounding_box = [min_x, max_x, min_y, max_y]
+		self.scale = 30/ (((max_x-min_x) +(max_y-min_y) + 0.5) * 0.2 )
+		expressed_nodes = dict()
+		for node in self.tree_morphology.getNodes():
+			expressed_nodes.update({node.index:node.expressed})
+		return expressed_nodes
+		
 
 	def PID(self,desiredAngle,joint):
 		proportional = 1.9
@@ -619,15 +862,24 @@ class Modular2D(gym.Env, EzPickle):
 		if self.tree_morphology is not None:
 			for n in self.tree_morphology.nodes:
 				if n.controller != None:
-					if n.expressed and n.component is not None:
-						c_values.append(n.controller.update(0))
+					c_values.append(n.controller.update(0))
 					if (COLOR_CONTROL):
 						cmap = plt.get_cmap('viridis')
 						color = cmap(c_values[-1])
 						if n.expressed and n.component is not None:
 							n.component[0].color2 = (color[0],color[1],color[2])
-			# controller values should be 1 less than the total number of joints (root node does not have a joint)
-			assert len(c_values)-1 ==  len(self.robot.joints)
+				if n.type == "JET":
+					angle = n.component.angle
+					vec = []
+					vec.append(math.sin(angle) * -JET_FORCE)
+					vec.append(math.cos(angle) * -JET_FORCE)
+					n.component.ApplyForceToCenter(vec,True)
+					if jet_particles:
+						particle = []
+						particle.append(n.component.position[0])
+						particle.append(n.component.position[1])
+						particles.append(particle)
+			jet_particles.update(particles)
 			for i,j in enumerate(self.robot.joints):
 				j.motorSpeed = self.PID(c_values[i+1],j)
 
@@ -648,12 +900,85 @@ class Modular2D(gym.Env, EzPickle):
 					reward = -100
 					done   = True
 		else:
-			raise Exception("no tree_morphology")
+			return
 
 		return observation, reward, done, info
 
+		#self.hull.ApplyForceToCenter((0, 20), True) -- Uncomment this to receive a bit of stability help
+		control_speed = False  # Should be easier as well
+		if control_speed:
+			self.joints[0].motorSpeed = float(SPEED_HIP  * np.clip(action[0], -1, 1))
+			self.joints[1].motorSpeed = float(SPEED_KNEE * np.clip(action[1], -1, 1))
+			self.joints[2].motorSpeed = float(SPEED_HIP  * np.clip(action[2], -1, 1))
+			self.joints[3].motorSpeed = float(SPEED_KNEE * np.clip(action[3], -1, 1))
+		else:
+			self.joints[0].motorSpeed     = float(SPEED_HIP     * np.sign(action[0]))
+			self.joints[0].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[0]), 0, 1))
+			self.joints[1].motorSpeed     = float(SPEED_KNEE    * np.sign(action[1]))
+			self.joints[1].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[1]), 0, 1))
+			self.joints[2].motorSpeed     = float(SPEED_HIP     * np.sign(action[2]))
+			self.joints[2].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[2]), 0, 1))
+			self.joints[3].motorSpeed     = float(SPEED_KNEE    * np.sign(action[3]))
+			self.joints[3].maxMotorTorque = float(MOTORS_TORQUE * np.clip(np.abs(action[3]), 0, 1))
+
+		self.world.Step(1.0/FPS, 6*30, 2*30)
+
+		pos = self.hull.position
+		vel = self.hull.linearVelocity
+
+		for i in range(10):
+			self.lidar[i].fraction = 1.0
+			self.lidar[i].p1 = pos
+			self.lidar[i].p2 = (
+				pos[0] + math.sin(1.5*i/10.0)*LIDAR_RANGE,
+				pos[1] - math.cos(1.5*i/10.0)*LIDAR_RANGE)
+			self.world.RayCast(self.lidar[i], self.lidar[i].p1, self.lidar[i].p2)
+
+		state = [
+			self.hull.angle,        # Normal angles up to 0.5 here, but sure more is possible.
+			2.0*self.hull.angularVelocity/FPS,
+			0.3*vel.x*(VIEWPORT_W/SCALE)/FPS,  # Normalized to get -1..1 range
+			0.3*vel.y*(VIEWPORT_H/SCALE)/FPS,
+			self.joints[0].angle,   # This will give 1.1 on high up, but it's still OK (and there should be spikes on hiting the ground, that's normal too)
+			self.joints[0].speed / SPEED_HIP,
+			self.joints[1].angle + 1.0,
+			self.joints[1].speed / SPEED_KNEE,
+			1.0 if self.legs[1].ground_contact else 0.0,
+			self.joints[2].angle,
+			self.joints[2].speed / SPEED_HIP,
+			self.joints[3].angle + 1.0,
+			self.joints[3].speed / SPEED_KNEE,
+			1.0 if self.legs[3].ground_contact else 0.0
+			]
+		state += [l.fraction for l in self.lidar]
+		assert len(state)==24
+
+		self.scroll = pos.x - VIEWPORT_W/SCALE/5
+
+		shaping  = 130*pos[0]/SCALE   # moving forward is a way to receive reward (normalized to get 300 on completion)
+		shaping -= 5.0*abs(state[0])  # keep head straight, other than that and falling, any behavior is unpunished
+
+		reward = 0
+		if self.prev_shaping is not None:
+			reward = shaping - self.prev_shaping
+		self.prev_shaping = shaping
+
+		for a in action:
+			reward -= 0.00035 * MOTORS_TORQUE * np.clip(np.abs(a), 0, 1)
+			# normalized to about -50.0 using heuristic, more optimal agent should spend less
+
+		done = False
+
+		if pos[0] > (TERRAIN_LENGTH-TERRAIN_GRASS)*TERRAIN_STEP:
+			done   = True
+		return np.array(state), reward, done, {}
+
 	def render(self, mode='human'):
 		from gym.envs.classic_control import rendering
+		SCALE= 80
+		self.scroll = 2.3
+		self.scroll_y = 4.5
+
 		if self.viewer is None:
 			self.viewer = rendering.Viewer(VIEWPORT_W, VIEWPORT_H)
 		self.viewer.set_bounds(self.scroll, VIEWPORT_W/SCALE + self.scroll, +self.scroll_y, VIEWPORT_H/SCALE + self.scroll_y)
@@ -680,6 +1005,15 @@ class Modular2D(gym.Env, EzPickle):
 						t = rendering.Transform(translation=trans*f.shape.pos)
 						self.viewer.draw_circle(f.shape.radius, 30, color=obj.color1).add_attr(t)
 						self.viewer.draw_circle(f.shape.radius, 30, color=obj.color2, filled=False, linewidth=2).add_attr(t)
+						#ll = 0.5 # linelength
+						#vec1 = Vector3((math.sin(f.body.angle) * ll) ,
+						#		(math.cos(f.body.angle) * ll) ,
+						#		0)
+						#vec2 = Vector3((math.sin(f.body.angle + math.pi/2) * ll) ,
+						#		(math.cos(f.body.angle + math.pi/2) * ll) ,
+						#		0)
+						#print("vec 1: ", vec1.x, vec1.y)
+						#print("vec 2: ", vec2.x, vec2.y)
 						if DISPLAY_VECTORS:
 							ll = 0.5 # linelength
 							x1 = (math.cos(f.body.angle) * ll) +f.body.position[0]
@@ -717,7 +1051,13 @@ class Modular2D(gym.Env, EzPickle):
 					self.viewer.draw_circle(0.1, 30).add_attr(t)
 					t = rendering.Transform(translation=obj.anchorB)
 					self.viewer.draw_circle(0.1, 30, color = (0,0,250)).add_attr(t)
-		
+		if jet_particles:
+			for ps in jet_particles.particles:
+				for p in ps:
+					t = rendering.Transform(translation = p)
+					self.viewer.draw_circle(0.1, 30).add_attr(t)
+		return self.viewer.render(return_rgb_array = mode=='rgb_array')
+
 		if self.wod:
 			wodposdown = []
 			wodposup = []
@@ -726,7 +1066,7 @@ class Modular2D(gym.Env, EzPickle):
 			wodposup.append(self.wod.position)
 			wodposup.append(40)
 			self.viewer.draw_line(wodposup,wodposdown,color=(0,0,1))
-
+		return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
 		flagy1 = TERRAIN_HEIGHT
 		flagy2 = flagy1 + 50/SCALE
@@ -735,6 +1075,7 @@ class Modular2D(gym.Env, EzPickle):
 		f = [(x, flagy2), (x, flagy2-10/SCALE), (x+25/SCALE, flagy2-5/SCALE)]
 		self.viewer.draw_polygon(f, color=(0.9,0.2,0) )
 		self.viewer.draw_polyline(f + [f[0]], color=(0,0,0), linewidth=2 )
+
 		return self.viewer.render(return_rgb_array = mode=='rgb_array')
 
 		# ------------------------------
@@ -771,4 +1112,82 @@ class Modular2D(gym.Env, EzPickle):
 		if self.viewer is not None:
 			self.viewer.close()
 			self.viewer = None
+
+if __name__=="__main__":
+	# Heurisic: suboptimal, have no notion of balance.
+	env = BipedalWalker()
+	env.reset()
+	steps = 0
+	total_reward = 0
+	a = np.array([0.0, 0.0, 0.0, 0.0])
+	STAY_ON_ONE_LEG, PUT_OTHER_DOWN, PUSH_OFF = 1,2,3
+	SPEED = 0.29  # Will fall forward on higher speed
+	state = STAY_ON_ONE_LEG
+	moving_leg = 0
+	supporting_leg = 1 - moving_leg
+	SUPPORT_KNEE_ANGLE = +0.1
+	supporting_knee_angle = SUPPORT_KNEE_ANGLE
+	while True:
+		s, r, done, info = env.step(a)
+		total_reward += r
+		if steps % 20 == 0 or done:
+			print("\naction " + str(["{:+0.2f}".format(x) for x in a]))
+			print("step {} total_reward {:+0.2f}".format(steps, total_reward))
+			print("hull " + str(["{:+0.2f}".format(x) for x in s[0:4] ]))
+			print("leg0 " + str(["{:+0.2f}".format(x) for x in s[4:9] ]))
+			print("leg1 " + str(["{:+0.2f}".format(x) for x in s[9:14]]))
+		steps += 1
+
+		contact0 = s[8]
+		contact1 = s[13]
+		moving_s_base = 4 + 5*moving_leg
+		supporting_s_base = 4 + 5*supporting_leg
+
+		hip_targ  = [None,None]   # -0.8 .. +1.1
+		knee_targ = [None,None]   # -0.6 .. +0.9
+		hip_todo  = [0.0, 0.0]
+		knee_todo = [0.0, 0.0]
+
+		if state==STAY_ON_ONE_LEG:
+			hip_targ[moving_leg]  = 1.1
+			knee_targ[moving_leg] = -0.6
+			supporting_knee_angle += 0.03
+			if s[2] > SPEED: supporting_knee_angle += 0.03
+			supporting_knee_angle = min( supporting_knee_angle, SUPPORT_KNEE_ANGLE )
+			knee_targ[supporting_leg] = supporting_knee_angle
+			if s[supporting_s_base+0] < 0.10: # supporting leg is behind
+				state = PUT_OTHER_DOWN
+		if state==PUT_OTHER_DOWN:
+			hip_targ[moving_leg]  = +0.1
+			knee_targ[moving_leg] = SUPPORT_KNEE_ANGLE
+			knee_targ[supporting_leg] = supporting_knee_angle
+			if s[moving_s_base+4]:
+				state = PUSH_OFF
+				supporting_knee_angle = min( s[moving_s_base+2], SUPPORT_KNEE_ANGLE )
+		if state==PUSH_OFF:
+			knee_targ[moving_leg] = supporting_knee_angle
+			knee_targ[supporting_leg] = +1.0
+			if s[supporting_s_base+2] > 0.88 or s[2] > 1.2*SPEED:
+				state = STAY_ON_ONE_LEG
+				moving_leg = 1 - moving_leg
+				supporting_leg = 1 - moving_leg
+
+		if hip_targ[0]: hip_todo[0] = 0.9*(hip_targ[0] - s[4]) - 0.25*s[5]
+		if hip_targ[1]: hip_todo[1] = 0.9*(hip_targ[1] - s[9]) - 0.25*s[10]
+		if knee_targ[0]: knee_todo[0] = 4.0*(knee_targ[0] - s[6])  - 0.25*s[7]
+		if knee_targ[1]: knee_todo[1] = 4.0*(knee_targ[1] - s[11]) - 0.25*s[12]
+
+		hip_todo[0] -= 0.9*(0-s[0]) - 1.5*s[1] # PID to keep head strait
+		hip_todo[1] -= 0.9*(0-s[0]) - 1.5*s[1]
+		knee_todo[0] -= 15.0*s[3]  # vertical speed, to damp oscillations
+		knee_todo[1] -= 15.0*s[3]
+
+		a[0] = hip_todo[0]
+		a[1] = knee_todo[0]
+		a[2] = hip_todo[1]
+		a[3] = knee_todo[1]
+		a = np.clip(0.5*a, -1.0, 1.0)
+
+		env.render()
+		if done: break
 

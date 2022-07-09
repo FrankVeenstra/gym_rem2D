@@ -7,6 +7,36 @@ class ModularEnv2D(gym.Env):
     def __init__(self):
         # Create logger for easy logging output
         self.log = logging.getLogger(self.__class__.__name__)
+		# Create box2d interfaces
+		#self.client = pyb.connect(pyb.DIRECT)
+        #self._last_render = time.time()
+        # Setup information needed for simulation
+        #self.dt = 1. / 240.
+        #pyb.setAdditionalSearchPath(ASSET_PATH)
+        #self._modules = {}
+        #self._joints = []
+        # Stored for user interactions
+        #self.morphology = None
+        #self._max_size = None
+        # Used for user interaction:
+        #self._real_time = False
+        # Run setup
+        #self.log.info("Creating modular environment")
+
+    def setup(self):
+        """Helper method to initialize default environment"""
+        # This is abstracted out from '__init__' because we need to do this
+        # first time 'render' is called
+        #self.log.debug("Setting up simulation environment")
+        #pyb.resetSimulation()
+        #pyb.setGravity(0, 0, -9.81)
+        # Extract time step for sleep during rendering
+        #self.dt = pyb.getPhysicsEngineParameters()['fixedTimeStep']
+        # Load ground plane for robots to walk on
+        #self.log.debug("Loading ground plane")
+        #self.plane_id = pyb.loadURDF('plane/plane.urdf')
+        #assert self.plane_id >= 0, "Could not load 'plane.urdf'"
+        #self.log.debug("Gym environment setup complete")
 
     def close(self):
         self.log.debug("Closing environment")
