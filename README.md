@@ -1,3 +1,5 @@
+Hello! If you came to this github repository from ALife 2023, note that this is not the latest version of the project. Stay tuned! You can find videos of the paper submitted at ALife 2023 here: [https://www.youtube.com/watch?v=dE1L48bbgAo](https://www.youtube.com/watch?v=dE1L48bbgAo). Part of the project controllers have been implemented in a newer evolutionary setup using Unity ML-agents, you can find that repository [here](https://github.com/FrankVeenstra/EvolvingModularRobots_Unity)
+
 # Robotics, Evolution and Modularity (REM) 2D
 
 This package implements an environment for a modular morphological evolution approach for 2D virtual creatures for
